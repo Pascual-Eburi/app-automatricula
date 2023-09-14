@@ -1,0 +1,1138 @@
+import React, { Fragment, useEffect, useRef, useState } from "react";
+import $ from "jquery";
+import flatpickr from "flatpickr";
+import "flatpickr/dist/l10n/es.js";
+import { Link } from "react-router-dom";
+//import { Select2 } from 'select2';
+import Dropzone from "dropzone";
+import { connect } from "react-redux";
+import { generatePassword } from "../helpers/General";
+import { add_student } from "../redux/actions/auth";
+
+//import 'flatpickr/dist/flatpickr.min.css';
+
+function AddStudentForm(props) {
+  const {
+    institutes,
+    isAuthenticated,
+    user,
+    modalities,
+    provinces,
+    loading,
+    add_student,
+  } = props;
+  const initialFormData = {
+    photo: "",
+    email: "",
+    password: "",
+    re_password: "",
+    name: "",
+    last_name: "",
+    phone: "",
+    dob: "",
+    district: "",
+    village: "",
+    doc_type: "",
+    doc_number: "",
+    gender: "",
+    address: "",
+    high_school_grade: "",
+    modality: "",
+    institute: "",
+    student_school_report: [],
+  };
+  const initialStateAutoPassword = true;
+
+  const [autoPassword, setAutoPassword] = useState(initialStateAutoPassword);
+  const [generatedPassword, setGeneratedPassword] = useState("");
+  const [rePassword, setRePassword] = useState("");
+  const [formData, setFormData] = useState(initialFormData);
+  const [thumbnail, setThumbnail] = useState(null);
+  const [validating, setValidating] = useState(false);
+  const [isLoading, setLoading] = useState(false);
+
+  const handleAuthoPassword = async () => {
+    if (autoPassword){
+      const password = await generatePassword(8);
+      setGeneratedPassword(password);
+      setRePassword(password);
+
+      // establecer la contrseña autogenerada
+      // Actualizar contraseña y contraseña repetida en formData
+      setFormData((prevFormData) => ({
+        ...prevFormData,
+        password: password,
+        re_password: password,
+      }));
+    }else{
+      setFormData((prevFormData) => ({
+        ...prevFormData,
+        password: '',
+        re_password: '',
+      }));
+
+    }
+
+  }
+
+  useEffect(() => {
+
+    handleAuthoPassword();
+    
+  }, [autoPassword]);
+
+  // establecer el modo de generación de la contrseña de la cuenta
+  const setPasswordMethod = (value) => {
+    setAutoPassword(value);
+  };
+
+  let list_institutes = institutes;
+  if (user && user.user_data.rol === "institute_staff") {
+    const institute = user.staff_data.institute;
+    const student_institute = { code: institute.code, name: institute.name };
+    list_institutes = new Array(student_institute);
+  }
+
+  const is_institute_staff = () => {
+    return user && user.user_data.rol === "institute_staff";
+  };
+
+  const {
+    photo,
+    email,
+    password,
+    re_password,
+    name,
+    last_name,
+    phone,
+    dob,
+    village,
+    district,
+    doc_type,
+    doc_number,
+    gender,
+    address,
+    high_school_grade,
+    modality,
+    institute,
+    student_school_report,
+  } = formData;
+
+  const fileSelectedHandler = (e) => {
+    const file = e.target.files[0];
+    let reader = new FileReader();
+    reader.readAsDataURL(file);
+    setThumbnail(file);
+    return file;
+  };
+
+  // INicializar datepiker
+  useEffect(() => {
+    //flatpickr( document.getElementById('dob'), {locale: 'es', });
+    const dobElement = document.getElementById("dob");
+    let dateobj = flatpickr(dobElement, {
+      altInput: true,
+      altFormat: "d F, Y",
+      dateFormat: "Y-m-d",
+      locale: "es",
+    });
+
+    dateobj.config.onChange.push((selectedDates, dateStr, instance) => {
+      const feedback = document.querySelector(`[data-validate="dob"]`);
+      if (feedback) {
+        dobElement.classList.remove("is-invalid");
+        feedback.remove();
+      }
+      setFormData((prevData) => ({
+        ...prevData,
+        dob: [...prevData.dob, dateStr],
+      }));
+
+      //setFormData({...formData, dob: dateStr });
+    });
+  }, []);
+
+  let selects = document.querySelectorAll('select[data-control="select2"]');
+
+  useEffect(() => {
+    selects.forEach(function(select) {
+      $(select).on("change", function(e) {
+        e.stopPropagation();
+        const key = e.target.name;
+        const value = e.target.value;
+        setFormData({ ...formData, [key]: value });
+        const feedback = document.querySelector(
+          `[data-validate="${e.target.name}"]`
+        );
+        e.target.classList.remove("is-invalid");
+        if (feedback) {
+          feedback.remove();
+        }
+      });
+    });
+  }, [selects]);
+
+  // dropzone
+
+  const handleFileAdded = (file) => {
+    setFormData((prevData) => ({
+      ...prevData,
+      student_school_report: file,
+    }));
+
+    const feedback = document.querySelector(
+      `[data-validate="student_school_report"]`
+    );
+    document
+      .querySelector('[name="student_school_report"]')
+      .classList.remove("is-invalid");
+
+    if (feedback) {
+      feedback.remove();
+    }
+
+    //console.log(myDropzone.files) 
+  };
+
+  const handleFileRemoved = (file) => {
+    setFormData((prevData) => ({
+      ...prevData,
+      student_school_report: prevData.student_school_report.filter(
+        (f) => f !== file
+      ),
+    }));
+  };
+
+  Dropzone.autoDiscover = false;
+
+  useEffect(() => {
+    const element = document.getElementById("student_school_report_uploader");
+
+    if (element.dropzone) {
+      element.dropzone.destroy(); // Destruir la instancia previa de Dropzone
+      //setMyDropzone(null)
+    }
+
+    const myDropzone = new Dropzone(element, {
+      url: "dummy",
+      maxFiles: 1,
+      maxFilesize: 10,
+      addRemoveLinks: true,
+      autoProcessQueue: false,
+      accept: function(file, done) {
+        const allowedExtensions = [".pdf", ".doc", ".docx", ".odt"];
+        const allowedMimeTypes = [
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ];
+
+        if (
+          allowedExtensions.includes(
+            file.name.substr(file.name.lastIndexOf("."))
+          ) &&
+          allowedMimeTypes.includes(file.type)
+        ) {
+          done();
+        } else {
+          alert(
+            "El archivo seleccionado no es válido. Por favor, seleccione un archivo PDF, Word o ODT."
+          );
+          myDropzone.removeFile(file);
+          done("El archivo seleccionado no es válido.");
+        }
+      },
+      dictDefaultMessage: "Arrastra archivos aquí para cargarlos",
+      dictFileTooBig:
+        "El archivo es demasiado grande ({{filesize}} MB). Tamaño máximo permitido: {{maxFilesize}} MB.",
+      dictInvalidFileType: "No se permite este tipo de archivo.",
+      dictResponseError: "Ha ocurrido un error durante la carga del archivo.",
+      init: function() {
+        this.on("addedfile", (file) => {
+          handleFileAdded(file, this);
+        });
+        //this.on("addedfile", handleFileAdded);
+        this.on("removedfile", handleFileRemoved);
+      },
+    });
+
+    //setMyDropzone(myDropzone)
+  }, []);
+
+  const onChange = (e) => {
+    e.stopPropagation();
+    //e.stopImmediatePropagation();
+    const feedback = document.querySelector(
+      `[data-validate="${e.target.name}"]`
+    );
+    e.target.classList.remove("is-invalid");
+    if (feedback) {
+      feedback.remove();
+    }
+    if (e.target.name === "photo") {
+      const file = fileSelectedHandler(e);
+      setFormData({ ...formData, [e.target.name]: file });
+    } else {
+      setFormData({ ...formData, [e.target.name]: e.target.value });
+    }
+  };
+
+  const resetInvalidStates = () => {
+    // elimiar mensajes anteriores
+    const invalids = document.querySelectorAll(".is-invalid");
+    invalids.forEach((input) => {
+      const feedback_name = input.getAttribute("name");
+      const feedback = document.querySelector(
+        `[data-validate="${feedback_name}"]`
+      );
+      input.classList.remove("is-invalid");
+      if (feedback) {
+        feedback.remove();
+      }
+    });
+  };
+
+  const validateStudentForm = async (formData) => {
+    setValidating(true);
+    resetInvalidStates();
+    handleAuthoPassword();
+
+    const inputs = Object.entries(formData);
+    let errors = 0;
+    inputs.forEach(([input, value]) => {
+      const domInput = document.querySelector(`[name="${input}"]`);
+      if (
+        (domInput &&
+          (value === "" ||
+            !value ||
+            value.length <= 0 ||
+            value === undefined)) ||
+        value === null
+      ) {
+        errors++;
+        domInput.classList.add("is-invalid");
+        const feedback = document.createElement("div");
+        feedback.classList.add("d-block");
+        feedback.classList.add("invalid-feedback");
+        feedback.setAttribute("data-validate", input);
+
+        feedback.innerHTML = "Este campo es invalido";
+        let parentDiv;
+        if (input !== "photo" && input !== "student_school_report") {
+          parentDiv = domInput.closest("div");
+        } else {
+          parentDiv =
+            input === "photo"
+              ? domInput.closest("div").nextElementSibling
+              : domInput.parentElement;
+        }
+
+        parentDiv.insertAdjacentElement("beforeend", feedback);
+        //console.log(domInput, value, input)
+      }
+    });
+
+    setValidating(false);
+    return errors === 0;
+  };
+
+
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+
+    // validaciones
+    // validaciones finales en el servidor
+    const form = e.target;
+    // form.classList.add('was-validated');
+    const valid = await validateStudentForm(formData);
+
+    //if (!valid){ return }
+    if (valid) {
+      const student_added = await add_student(formData);
+      if (student_added) {
+        resetForm();
+      }
+    }
+    //console.log(student_added);
+    return;
+  };
+
+  // on cancel
+  const resetForm = () => {
+    setFormData(initialFormData);
+    setAutoPassword(initialStateAutoPassword);
+    resetInvalidStates();
+    let selects = document.querySelectorAll('select[data-control="select2"]');
+    const photo_reset_btn = document.querySelector(
+      '[data-kt-image-input-action="cancel"]'
+    );
+    const student_school_report = document.getElementById(
+      "student_school_report_uploader"
+    );
+
+    if (student_school_report.dropzone) {
+      student_school_report.dropzone.removeAllFiles(); // Borrar todos los archivos cargados
+    }
+
+    if (photo_reset_btn) {
+      $(photo_reset_btn).click();
+    }
+  };
+
+  return (
+    <Fragment>
+      {/* <!--begin::Form--> gap-14 gap-lg-14   flex-column flex-row-fluid flex-lg-row */}
+      <form
+        id="enrollStudentForm"
+        className="form d-flex justify-content-between "
+        onSubmit={(e) => onSubmit(e)}
+      >
+        {/* <!--begin::Aside column gap-7 gap-lg-10 w-100 w-lg-300px mb-7 me-lg-10 -->*/}
+        <div className="d-flex flex-column col-sm-12 col-md-3 gap-7 gap-lg-10  ">
+          {/* <!--begin::Thumbnail settings-->*/}
+          <div className="card card-flush py-4 me-lg-10">
+            {/* <!--begin::Card header-->*/}
+            <div className="card-header">
+              {/* <!--begin::Card title-->*/}
+              <div className="card-title">
+                <h2>Foto</h2>
+              </div>
+              {/* <!--end::Card title-->*/}
+            </div>
+            {/* <!--end::Card header-->*/}
+
+            {/* <!--begin::Card body-->*/}
+            <div className="card-body text-center pt-0">
+              {/* <!--begin::Image input-->*/}
+
+              <div
+                className="image-input image-input-empty image-input-outline image-input-placeholder mb-3"
+                data-kt-image-input="true"
+              >
+                {/* <!--begin::Preview existing avatar-->*/}
+                <div className="image-input-wrapper w-150px h-150px"></div>
+                {/* <!--end::Preview existing avatar-->*/}
+
+                {/* <!--begin::Label-->*/}
+                <label
+                  className="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
+                  data-kt-image-input-action="change"
+                  data-bs-toggle="tooltip"
+                  title="Foto del alumno"
+                >
+                  <i className="ki-duotone ki-pencil fs-7">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                  </i>
+                  {/* <!--begin::Inputs-->*/}
+                  <input
+                    type="file"
+                    name="photo"
+                    id="photo"
+                    accept=".png, .jpg, .jpeg"
+                    onChange={(e) => onChange(e)}
+                  />
+                  <input type="hidden" name="avatar_remove" />
+                  {/* <!--end::Inputs-->*/}
+                </label>
+                {/* <!--end::Label-->*/}
+
+                {/* <!--begin::Cancel-->*/}
+                <span
+                  className="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
+                  data-kt-image-input-action="cancel"
+                  data-bs-toggle="tooltip"
+                  title="Cancelar foto"
+                >
+                  <i className="ki-duotone ki-cross fs-2">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                  </i>
+                </span>
+                {/* <!--end::Cancel-->*/}
+
+                {/* <!--begin::Remove-->*/}
+                <span
+                  className="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
+                  data-kt-image-input-action="remove"
+                  data-bs-toggle="tooltip"
+                  title="Eliminar foto"
+                >
+                  <i className="ki-duotone ki-cross fs-2">
+                    <span className="path1"></span>
+                    <span className="path2"></span>
+                  </i>
+                </span>
+                {/* <!--end::Remove-->*/}
+              </div>
+              {/* <!--end::Image input-->*/}
+
+              {/* <!--begin::Description-->*/}
+              <div className="text-muted fs-7">
+                Establezca la foto del alumno. Solo archivos con extension{" "}
+                <code> *.png, *.jpg and *.jpeg </code> serán aceptados
+              </div>
+              {/* <!--end::Description-->*/}
+            </div>
+
+            {/* <!--end::Card body-->*/}
+          </div>
+          {/* <!--end::Thumbnail settings-->*/}
+          {/* <!--begin::Status-->*/}
+          <div className="card card-flush py-4 me-lg-10">
+            {/* <!--begin::Card header-->*/}
+            <div className="card-header">
+              {/* <!--begin::Card title-->*/}
+              <div className="card-title">
+                <h2>Acceso</h2>
+              </div>
+              {/* <!--end::Card title-->*/}
+
+              {/* <!--begin::Card toolbar-->*/}
+              <div className="card-toolbar">
+                <div
+                  className="rounded-circle bg-success w-15px h-15px"
+                  id="kt_ecommerce_add_product_status"
+                ></div>
+              </div>
+              {/* <!--begin::Card toolbar-->*/}
+            </div>
+            {/* <!--end::Card header-->*/}
+
+            {/* <!--begin::Card body-->*/}
+            <div className="card-body pt-0">
+              {autoPassword && generatePassword && (
+                <div className="alert alert-dismissible bg-light-info border border-info border-dashed d-flex flex-column flex-sm-row w-100 p-5 mb-10">
+                  <div className="d-flex flex-column pe-0 pe-sm-10">
+                    <h5 className="mb-1">Contraseña provisional</h5>
+                    <span>
+                      El alumno usuará esta constraseña para acceder a la
+                      aplicacion por primera vez. La contraseña generada es{" "}
+                      <code>{generatedPassword}</code>
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="position-absolute position-sm-relative m-2 m-sm-0 top-0 end-0 btn btn-icon ms-sm-auto"
+                    data-bs-dismiss="alert"
+                  >
+                    <i className="ki-duotone ki-lock-2 fs-1 text-info">
+                      <i className="path1"></i>
+                      <i className="path2"></i>
+                      <i className="path3"></i>
+                      <i className="path4"></i>
+                      <i className="path5"></i>
+                    </i>{" "}
+                  </button>
+                </div>
+              )}
+              {/* <!--begin::Input group-->*/}
+              <div className="mb-10 fv-row mt-10">
+                {/* <!--begin::Label-->*/}
+                <label className="required form-label">Email</label>
+                {/* <!--end::Label-->*/}
+                {/* <!--begin::Input-->*/}
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  className="form-control mb-2"
+                  placeholder="alumno@example.com"
+                  value={email}
+                  onChange={(e) => onChange(e)}
+                />
+                {/* <!--end::Input-->*/}
+                {/* <!--begin::Description-->*/}
+                <div className="text-muted fs-7">
+                  El estudiante podrá iniciar sesión con este email.
+                </div>
+                {/* <!--end::Description-->*/}
+              </div>
+              {/* <!--end::Input group-->*/}
+              {/* <!--end::Input group-->*/}
+              <div className="mb-10 fv-row mt-10 form-check form-switch form-check-custom form-check-success form-check-solid">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  value={autoPassword}
+                  checked={autoPassword}
+                  id="password_method"
+                  onChange={(e) => setPasswordMethod(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="password_type">
+                  Generar contraseña automáticamente
+                </label>
+              </div>
+              {/* <!--end::Input group-->*/}
+              {/* <!--begin::Input group-->*/}
+              <div className="mb-10 fv-row mt-10">
+                {/* <!--begin::Label-->*/}
+                <label className="form-label">Contraseña</label>
+                {/* <!--end::Label-->*/}
+                {/* <!--begin::Input-->*/}
+                {autoPassword ? (
+                  <input
+                    type="text"
+                    readOnly
+                    className="form-control mb-2"
+                    placeholder="Una contraseña provisional..."
+                    value={generatedPassword}
+                  />
+                ) : (
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    className="form-control mb-2"
+                    placeholder="Una contraseña provisional..."
+                    value={password}
+                    onChange={(e) => onChange(e)}
+                  />
+                )}
+                {/* <!--end::Input-->*/}
+                {/* <!--begin::Description-->*/}
+                <div className="text-muted fs-7">
+                  Mínimo 8 caracteres. Esta contraseña será provisional.
+                </div>
+                {/* <!--end::Description-->*/}
+              </div>
+              {/* <!--end::Input group-->*/}
+              {!autoPassword && password && (
+                <div className="mb-10 fv-row mt-10">
+                  {/* <!--begin::Label-->*/}
+                  <label className="form-label">Repetir Contraseña</label>
+                  {/* <!--end::Label-->*/}
+                  {/* <!--begin::Input-->*/}
+
+                  <input
+                    type="password"
+                    id="re_password"
+                    name="re_password"
+                    className="form-control mb-2"
+                    placeholder="Repita la contraseña anterior..."
+                    value={re_password}
+                    onChange={(e) => onChange(e)}
+                  />
+
+                  {/* <!--end::Input-->*/}
+                  {/* <!--begin::Description-->*/}
+                  <div className="text-muted fs-7">
+                    Repetita la contraseña anterior aquí.
+                  </div>
+                  {/* <!--end::Description-->*/}
+                </div>
+              )}
+            </div>
+            {/* <!--end::Card body-->*/}
+          </div>
+          {/* <!--end::Status-->*/}
+        </div>
+        {/* <!--end::Aside column-->*/}
+
+        {/* <!--begin::Main column flex-row-fluid gap-7 gap-lg-10-->*/}
+        <div className="d-flex flex-column col-sm-12 col-md-9 gap-7 gap-lg-10 ms-auto">
+          {/* <!--begin:::Tabs-->*/}
+
+          <div className="d-flex flex-column gap-7 gap-lg-10">
+            {/* <!--begin::General options-->*/}
+            <div className="card card-flush py-4">
+              {/* <!--begin::Card header-->*/}
+              <div className="card-header">
+                <div className="card-title">
+                  <h2>General</h2>
+                </div>
+              </div>
+              {/* <!--end::Card header-->*/}
+
+              {/* <!--begin::Card body-->*/}
+              <div className="card-body pt-0">
+                {/* <!--begin::Row-->*/}
+                <div className="row">
+                  {/* <!--begin::Input group-->*/}
+                  <div className="col-md-4 col-sm-6 mb-10 fv-row">
+                    {/* <!--begin::Label-->*/}
+                    <label className="required form-label">Nombre</label>
+                    {/* <!--end::Label-->*/}
+
+                    {/* <!--begin::Input-->*/}
+                    <input
+                      type="text"
+                      name="name"
+                      className="form-control mb-2"
+                      placeholder="Nombre...."
+                      value={name}
+                      onChange={(e) => onChange(e)}
+                    />
+                    {/* <!--end::Input-->*/}
+
+                    {/* <!--begin::Description-->*/}
+                    <div className="text-muted fs-7">
+                      Tal y como aparece en su documento de identidad.
+                    </div>
+                    {/* <!--end::Description-->*/}
+                  </div>
+                  {/* <!--end::Input group-->*/}
+
+                  {/* <!--begin::Input group-->*/}
+                  <div className="col-md-4 col-sm-6 mb-10 fv-row">
+                    {/* <!--begin::Label-->*/}
+                    <label className="required form-label">Apellidos</label>
+                    {/* <!--end::Label-->*/}
+
+                    {/* <!--begin::Input-->*/}
+                    <input
+                      type="text"
+                      name="last_name"
+                      className="form-control mb-2"
+                      placeholder="Apellidos...."
+                      value={last_name}
+                      onChange={(e) => onChange(e)}
+                    />
+                    {/* <!--end::Input-->*/}
+
+                    {/* <!--begin::Description-->*/}
+                    <div className="text-muted fs-7">
+                      En el mismo orden que aparecen en su documento.
+                    </div>
+                    {/* <!--end::Description-->*/}
+                  </div>
+                  {/* <!--end::Input group-->*/}
+
+                  {/* <!--begin::Input group-->*/}
+                  <div className="col-md-4 col-sm-6 mb-10 fv-row">
+                    {/* <!--begin::Label-->*/}
+                    <label className="required form-label">Telefono:</label>
+                    {/* <!--end::Label-->*/}
+                    {/* <!--begin::Input-->*/}
+                    <input
+                      id="phone"
+                      name="phone"
+                      type="text"
+                      placeholder="Telefono de contacto"
+                      className="form-control mb-2"
+                      value={phone}
+                      onChange={(e) => onChange(e)}
+                    />
+                    {/* <!--end::Input-->*/}
+                  </div>
+                  {/* <!--end::Input group-->*/}
+
+                  {/* <!--begin::Input group-->*/}
+                  <div className="col-md-4 col-sm-6 mb-10 fv-row">
+                    {/* <!--begin::Label-->*/}
+                    <label className="required form-label">
+                      Fecha Nacimiento
+                    </label>
+                    {/* <!--end::Label-->*/}
+                    {/* <!--begin::Input-->*/}
+                    <input
+                      id="dob"
+                      name="dob"
+                      type="date"
+                      placeholder="Selecciona una fecha"
+                      className="form-control mb-2"
+                      value={dob}
+                      onChange={(e) => onChange(e)}
+                    />
+                    {/* <!--end::Input-->*/}
+                  </div>
+                  {/* <!--end::Input group-->*/}
+
+                  {/* <!--begin::Input group-->*/}
+                  <div className="col-md-4 col-sm-6 mb-10 fv-row">
+                    {/* <!--begin::Label-->*/}
+                    <label className="required form-label">Natural de:</label>
+                    {/* <!--end::Label-->*/}
+                    {/* <!--begin::Input-->*/}
+                    <input
+                      id="village"
+                      name="village"
+                      type="text"
+                      placeholder="Pueblo, localidad de origen..."
+                      className="form-control mb-2"
+                      value={village}
+                      onChange={(e) => onChange(e)}
+                    />
+                    {/* <!--end::Input-->*/}
+                  </div>
+                  {/* <!--end::Input group-->*/}
+
+                  {/* <!--begin::Input group-->*/}
+                  <div className="col-md-4 col-sm-6 mb-10 fv-row">
+                    {/* <!--begin::Label-->*/}
+                    <label className="required form-label">Distrito</label>
+                    {/* <!--end::Label-->*/}
+                    {/* <!--begin::Input-->*/}
+                    <select
+                      className="form-select mb-2"
+                      data-control="select2"
+                      data-hide-search="false"
+                      name="district"
+                      data-placeholder="Selecciona una opción"
+                      id="district"
+                      onChange={(e) => onChange(e)}
+                      value={district}
+                    >
+                      <option></option>
+                      {provinces &&
+                        provinces.map((province) => {
+                          return (
+                            <optgroup
+                              label={`Provincia de ${province.name}`}
+                              key={province.name}
+                            >
+                              {province.districts &&
+                                province.districts.map((district) => {
+                                  return (
+                                    <option
+                                      value={district.district_id}
+                                      key={district.name}
+                                    >
+                                      {" "}
+                                      {district.name}{" "}
+                                    </option>
+                                  );
+                                })}
+                            </optgroup>
+                          );
+                        })}
+                    </select>
+                    {/* <!--end::Input-->*/}
+                  </div>
+                  {/* <!--end::Input group-->*/}
+
+                  {/* <!--begin::Input group-->*/}
+                  <div className="col-md-2 col-sm-6 mb-10 fv-row">
+                    {/* <!--begin::Label-->*/}
+                    <label className="required form-label">
+                      Tipo de documento
+                    </label>
+                    {/* <!--end::Label-->*/}
+                    {/* <!--begin::Input-->*/}
+                    <select
+                      className="form-select mb-2"
+                      data-control="select2"
+                      data-hide-search="true"
+                      name="doc_type"
+                      data-placeholder="Selecciona una opción"
+                      onChange={(e) => onChange(e)}
+                      id="doc_type"
+                      value={formData.doc_type}
+                    >
+                      <option></option>
+                      <option value="dni">DNI</option>
+                      <option value="pasaporte">Pasaporte</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                    {/* <!--end::Input-->*/}
+                  </div>
+                  {/* <!--end::Input group-->*/}
+
+                  {/* <!--begin::Input group-->*/}
+                  <div className="col-md-3 col-sm-6 mb-10 fv-row">
+                    {/* <!--begin::Label-->*/}
+                    <label className="required form-label">Documento:</label>
+                    {/* <!--end::Label-->*/}
+                    {/* <!--begin::Input-->*/}
+                    <input
+                      id="doc_number"
+                      name="doc_number"
+                      type="text"
+                      disabled={ !doc_type ? true : false}
+                      placeholder={
+                        !doc_type ?
+                        "Selecciona tipo de documento...":
+                        doc_type.toUpperCase()
+                      }
+                      className="form-control mb-2"
+                      value={doc_number}
+                      onChange={(e) => onChange(e)}
+                    />
+                    {/* <!--end::Input-->*/}
+                  </div>
+                  {/* <!--end::Input group-->*/}
+
+                  {/* <!--begin::Input group-->*/}
+                  <div className="col-md-2 col-sm-6 mb-10 fv-row">
+                    {/* <!--begin::Label-->*/}
+                    <label className="required form-label">Genero</label>
+                    {/* <!--end::Label-->*/}
+
+                    {/* <!--begin::Input-->*/}
+
+                    <select
+                      className="form-select mb-2"
+                      data-control="select2"
+                      data-hide-search="true"
+                      name="gender"
+                      data-placeholder="Selecciona una opción"
+                      id="gender"
+                      onChange={(e) => onChange(e)}
+                      value={formData.gender}
+                    >
+                      <option value="nada">Sin seleccionar</option>
+                      <option value="masculino">Masculino</option>
+                      <option value="femenino">Femenino</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                    {/* <!--end::Input-->*/}
+                  </div>
+                  {/* <!--end::Input group-->*/}
+
+                  {/* <!--begin::Input group-->*/}
+                  <div className="col-md-5 col-sm-6 mb-10 fv-row">
+                    {/* <!--begin::Label-->*/}
+                    <label className="required form-label">Dirección:</label>
+                    {/* <!--end::Label-->*/}
+                    {/* <!--begin::Input-->*/}
+                    <input
+                      id="address"
+                      name="address"
+                      type="text"
+                      placeholder="Dirección..."
+                      className="form-control mb-2"
+                      value={address}
+                      onChange={(e) => onChange(e)}
+                    />
+                    {/* <!--end::Input-->*/}
+                  </div>
+                  {/* <!--end::Input group-->*/}
+                </div>
+                {/* <!--end::Row-->*/}
+              </div>
+              {/* <!--end::Card header-->*/}
+            </div>
+            {/* <!--end::General options-->*/}
+          </div>
+
+          {/* <!--end:::Tabs-->*/}
+          {/* <!--begin::Media-->*/}
+          <div className="card card-flush py-4">
+            {/* <!--begin::Card header-->*/}
+            <div className="card-header">
+              <div className="card-title">
+                <h2>Información acádemica</h2>
+              </div>
+            </div>
+            {/* <!--end::Card header-->*/}
+
+            {/* <!--begin::Card body-->*/}
+            <div className="card-body pt-0">
+              <div className="row d-flex align-items-stretch">
+                <div className="col-md-6 col-sm-12">
+                  <div className="row row-fluid">
+                    {/* <!--begin::Input group-->*/}
+                    <div className="mb-10 col-md-6 col-sm-6">
+                      {/* <!--begin::Label-->*/}
+                      <label className="required form-label">
+                        Media Bachillerato
+                      </label>
+                      {/* <!--end::Label-->*/}
+                      {/* <!--begin::Input-->*/}
+                      <input
+                        type="text"
+                        id="high_school_grade"
+                        name="high_school_grade"
+                        className="form-control mb-2"
+                        placeholder="8.5, 5.5, 6 ..."
+                        value={high_school_grade}
+                        onChange={(e) => onChange(e)}
+                      />
+                      {/* <!--end::Input-->*/}
+                      {/* <!--begin::Description-->*/}
+                      <div className="text-muted fs-7">
+                        Nota media del Bachillerato del estudiante.
+                      </div>
+                      {/* <!--end::Description-->*/}
+                    </div>
+                    {/* <!--end::Input group-->*/}
+
+                    {/* <!--begin::Input group-->*/}
+                    <div className="mb-10 col-md-6 col-sm-6">
+                      {/* <!--begin::Label-->*/}
+                      <label className="required form-label">Modalidad</label>
+                      {/* <!--end::Label-->*/}
+                      {/* <!--begin::Input-->*/}
+                      <select
+                        className="form-select mb-2"
+                        data-hide-search="true"
+                        data-control="select2"
+                        name="modality"
+                        data-placeholder="Selecciona una modalidad"
+                        id="modality"
+                        onChange={(e) => onChange(e)}
+                        value={formData.modality}
+                      >
+                        <option></option>
+                        {modalities &&
+                          modalities.map((modality) => {
+                            return (
+                              <option
+                                value={modality.modality_id}
+                                key={modality.name}
+                              >
+                                {modality.name}
+                              </option>
+                            );
+                          })}
+                      </select>
+                      {/* <!--end::Input-->*/}
+                    </div>
+                    {/* <!--end::Input group-->*/}
+                    <div className="col-md-12 col-sm-12">
+                      {/* <!--begin::Input group-->*/}
+                      <div className="mb-10 fv-row">
+                        {/* <!--begin::Label-->*/}
+                        <label className="required form-label">
+                          Instituto de procedencia
+                        </label>
+                        {/* <!--end::Label-->*/}
+                        {/* <!--begin::Input-->*/}
+                        <select
+                          className="form-select mb-2"
+                          data-control="select2"
+                          data-hide-search={
+                            user.user_data.rol === "institute_staff"
+                              ? "true"
+                              : "false"
+                          }
+                          name="institute"
+                          onChange={(e) => onChange(e)}
+                          data-placeholder="Selecciona una opción"
+                          id="institute"
+                          value={formData.institute}
+                        >
+                          <option></option>
+                          {list_institutes &&
+                            list_institutes.map((institute) => {
+                              return (
+                                <option
+                                  value={institute.code}
+                                  key={institute.name}
+                                >
+                                  {institute.name}{" "}
+                                </option>
+                              );
+                            })}
+                        </select>
+                        {/* <!--end::Input-->*/}
+                      </div>
+                      {/* <!--end::Input group-->*/}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-md-6 col-sm-12 d-flex flex-column">
+                  {/* <!--begin::Input group-->*/}
+                  <div
+                    className="mb-2"
+                    style={{ height: "90%" }}
+                    name="student_school_report"
+                  >
+                    <label className="required form-label">
+                      Hoja academica
+                    </label>
+                    {/* <!--begin::Dropzone-->*/}
+                    <div
+                      className="dropzone d-flex flex-column align-items-center justify-content-center gap-2 gap-lg-1"
+                      id="student_school_report_uploader"
+                      style={{ height: "90%" }}
+                    >
+                      {/* <!--begin::Message-->*/}
+                      <div className="dz-message needsclick ">
+                        {/* <!--begin::Icon-->*/}
+                        <i className="ki-duotone ki-file-up text-primary fs-3x">
+                          <span className="path1"></span>
+                          <span className="path2"></span>
+                        </i>
+                        {/* <!--end::Icon-->*/}
+                        {/* <!--begin::Info-->*/}
+                        <div className="ms-4">
+                          <h3 className="fs-5 fw-bold text-gray-900 mb-1">
+                            Suelte el archivo aquí o haga clic para cargarlo.
+                          </h3>
+                          <span className="fs-7 fw-semibold text-gray-400">
+                            Puede subir máximo 1 archivo
+                          </span>
+                        </div>
+                        {/* <!--end::Info-->*/}
+                      </div>
+                    </div>
+                    {/* <!--end::Dropzone-->*/}
+                  </div>
+                  {/* <!--end::Input group-->*/}
+                  {/* <!--begin::Description-->*/}
+                  <div className="text-muted fs-7">
+                    Hoja académica del alumno
+                  </div>
+                  {/* <!--end::Description-->*/}
+                </div>
+              </div>
+            </div>
+            {/* <!--end::Card body-->*/}
+          </div>
+          {/* <!--end::Media-->*/}
+
+          <div className="d-flex justify-content-end">
+            {/* <!--begin::Button-->*/}
+            <Link to="/alumnos/listado" id="cancel" className="btn btn-light me-5">
+              Cancelar inscripción
+            </Link>
+            {/* <!--end::Button-->*/}
+
+            {/* <!--begin::Button-->*/}
+            <button
+              type="reset"
+              id="deregisterButton"
+              className="btn btn-info me-5"
+              onClick={resetForm}
+            >
+              <span className="indicator-label"> Reiniciar Formulario </span>
+              <span className="indicator-progress">
+                Please wait...
+                <span className="spinner-border spinner-border-sm align-middle ms-2"></span>
+              </span>
+            </button>
+
+            <button
+              type="submit"
+              id="submitEnrollmentForm"
+              className="btn btn-primary"
+            >
+              {!loading && !validating && (
+                <span className="indicator-label"> Preincribir alumno </span>
+              )}
+              {isLoading && (
+                <span className="indicator-progress d-flex">
+                  Realizando preinscripcion...
+                  <span className="spinner-border spinner-border-sm align-middle ms-2"></span>
+                </span>
+              )}
+
+              {validating && (
+                <span className="indicator-progress d-flex">
+                  Validando formulario...
+                  <span className="spinner-border spinner-border-sm align-middle ms-2"></span>
+                </span>
+              )}
+            </button>
+            {/* <!--end::Button-->*/}
+          </div>
+        </div>
+        {/* <!--end::Main column-->*/}
+      </form>
+      {/* <!--end::Form-->*/}
+    </Fragment>
+  );
+}
+
+const mapStateToProps = (state) => ({
+  loading: state.Auth.loading,
+  //isAuthenticated: state.Auth.isAuthenticated
+});
+
+export default connect(mapStateToProps, {
+  add_student,
+})(AddStudentForm);

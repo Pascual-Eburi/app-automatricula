@@ -1,0 +1,64 @@
+
+# Este archivo contiene lista lista de dependencias que se utilizan en el backend del proyecto con Django. A continuación, se describen brevemente para qué se utilizan cada una de las dependencias:
+
+
+# Marco web de Python que se utiliza para crear el backend del proyecto. Django proporciona un conjunto completo de herramientas para desarrollar aplicaciones web.
+Django==3.1.7
+
+#Proporciona una configuración sencilla para permitir el acceso de origen cruzado (CORS) en aplicaciones Django.
+django-cors-headers==3.7.0
+
+# Carga la configuración del proyecto desde variables de entorno y archivos .env.
+django-environ==0.4.5
+
+#Biblioteca para construir la API REST.
+djangorestframework==3.12.4
+
+# Biblioteca de Django que proporciona vistas y serializers para implementar autenticación y registro de usuarios.
+djoser==2.1.0
+
+# una biblioteca que permite la autenticación de usuarios mediante proveedores de redes sociales como Facebook y Google.
+# social-auth-app-django==4.0.0
+
+# proporciona un editor de texto enriquecido para los campos de texto en formularios Django.
+django-ckeditor==6.1.0
+
+# Biblioteca de Python que proporciona la funcionalidad de zonas horarias.
+pytz==2021.3
+
+# Biblioteca de Python para procesamiento de imágenes.
+Pillow==9.4.0
+
+# mutagen==1.45.1: es una biblioteca de Python para leer y escribir metadatos de archivos de audio.
+# Biblioteca de Python que proporciona una interfaz para trabajar con la base de datos PostgreSQL.
+psycopg2==2.9.2 
+
+# Biblioteca de Python para el cifrado de contraseñas.
+argon2-cffi==21.1.0 
+#django-environ==0.4.5
+
+# stripe==2.58.0
+# braintree==4.13.1 biblioteca de Python para integrar pagos con Braintree.
+
+# Biblioteca de Python para la implementación de JSON Web Tokens (JWT).
+pyJWT==2.1.0
+
+
+# Biblioteca de Python para interactuar con los servicios de Amazon Web Services (AWS).
+# boto3==1.18.63
+
+# biblioteca de Django para interactuar con diferentes servicios de almacenamiento en la nube, como AWS S3.
+# django-storages==1.12.2 
+
+
+# Biblioteca de Python para procesar texto con formato Markdown.
+markdown==3.3.4
+
+# Servidor HTTP de Python para implementar aplicaciones Django en producción.
+gunicorn==20.1.0
+
+# Biblioteca de Python para servir archivos estáticos en producción.
+whitenoise==5.3.0
+
+# Biblioteca de Python para enviar solicitudes HTTP.
+requests==2.26.0

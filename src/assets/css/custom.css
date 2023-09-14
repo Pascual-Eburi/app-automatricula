@@ -1,0 +1,168 @@
+
+/* --- HEADER ----*/
+.home-nav .text-Fin{
+    display: flex;
+    justify-content: flex-end;
+}
+
+
+  
+/**************************************************
+    HOME - FEACTURES SECTION
+***************************************************/
+
+/*carousel featured*/
+#features-section .carousel-custom{
+    background-color: none;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom:5rem;
+}
+.carousel-custom .carousel-inner{
+    width: 100%!important;
+    margin-bottom: 3rem;
+    padding-bottom: 4rem;
+}
+.custom-carousel-indicators{
+    list-style: none;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-direction: column;
+    position: relative;
+    top: none;
+    right: none;
+    left:initial
+}
+
+.custom-carousel-indicators [data-bs-target] {
+	box-sizing: content-box;
+	flex: 0 1 auto;
+	width: auto;
+	height: auto;
+	padding: 2rem 1rem;
+	margin-right: 0;
+	margin-left: 0;
+	text-indent: initial;
+	cursor: pointer;
+	background-color: #ffffff;
+	background-clip: padding-box;
+	border: 0;
+	border-top: 10px solid transparent;
+	border-bottom: 10px solid transparent;
+	opacity: 1!important;
+	transition: box-shadow 0.3s ease-in-out;
+    
+}
+
+.custom-carousel-indicators .active{
+    z-index: 9999!important;
+    box-shadow: var(--bs-engage-btn-box-shadow);
+    border-width: .1px;
+    border-style: solid;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    color: var(--bs-engage-btn-color);
+    border-color: var(--bs-engage-btn-border-color);
+    background-color: var(--bs-engage-btn-bg);
+  }
+@media screen and (max-width:767px){
+    .carousel-custom .carousel-inner{
+        margin-bottom: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    .custom-carousel-indicators{
+        display: flex;
+        width: 100%;
+        flex-direction: row;
+
+    }
+
+    .custom-carousel-indicators li{
+        width: auto!important;
+        display: none;
+        /*transform: translateX(240%)!important;*/
+    }
+    .custom-carousel-indicators li.active{
+        display: block;
+        margin: 0rem 0 2rem 0;
+    }
+}
+
+
+/***************************************************************
+  HOME - HOW IT WORKS SECTION mb-3 me-3 me-lg-6
+****************************************************************/
+.nav-center{
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    padding:0!important;
+
+}
+#how-it-works-section{
+    padding-top: 4rem;
+    margin-top: 4rem;
+    background-color: #f6f9fe;
+    background-color: transparent;
+}
+
+/*nav ul tabs pill*/
+#how-to-tabs{
+    border-color: var(--bs-primary)!important;
+}
+#how-to-tabs li{
+    z-index: 0;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    flex-direction: column;
+}
+#how-to-tabs .nav-link{
+    position: relative!important;
+    margin:0;
+    padding: 2rem 4rem;
+}
+#how-to-tabs .nav-link.active{
+    color: var(--bs-primary);
+    border: 1px dashed var(--bs-primary)!important;
+    background-color: var(--bs-primary-light) !important;
+}
+
+#how-to-tabs .nav-link + span{
+    background-color: none;
+    display: block;
+    width: 0px;
+    height: 3rem;
+    margin:0 auto;
+    position: relative;
+
+}
+#how-to-tabs .nav-link.active + span{
+    border: 1px dashed var(--bs-primary)!important;
+}
+#how-to-tabs .nav-link.active + span::before{
+    content: "";
+    position: absolute;
+    background-color:var(--bs-primary);
+    width: .8rem;
+    height: .8rem;
+    border-radius: 50%;
+    left: calc(50% - .4rem);
+    bottom: -3px;
+}
+
+@media  screen and (max-width: 991px) {
+    /*tabs como funciona*/
+    #how-to-tabs{
+        flex-wrap: nowrap;
+    }
+    #how-to-tabs .nav-link{
+        padding: 2rem 2rem;
+    }
+}
+
+
