@@ -51,7 +51,6 @@ export default function AppRouter() {
         {/* Error Display */}
         <Route path="*" element={<Error404 />} />
 
-        <Route exact path="/" element={<Home />} />
         <Route
           element={
             <PublicRoute
@@ -62,9 +61,13 @@ export default function AppRouter() {
         >
           <Route exact path="/login" element={<Login />} />
         </Route>
-        <Route exact path='/activate/:uid/:token' element={<Activate/>}/>
-        <Route exact path='/reset_password' element={<ResetPassword/>} />
-        <Route exact path='/password/reset/confirm/:uid/:token' element={<ResetPasswordConfirm/>} />
+        <Route exact path="/activate/:uid/:token" element={<Activate />} />
+        <Route exact path="/reset_password" element={<ResetPassword />} />
+        <Route
+          exact
+          path="/password/reset/confirm/:uid/:token"
+          element={<ResetPasswordConfirm />}
+        />
 
         <Route
           element={
@@ -74,6 +77,7 @@ export default function AppRouter() {
             />
           }
         >
+          <Route exact path="/" element={<Home />} />
           <Route exact path="/panel" element={<Dashboard />} />
           <Route exact path="/matriculas/listado" element={<Enrollment />} />
           <Route
@@ -108,7 +112,7 @@ export default function AppRouter() {
               />
             }
           >
-              <Route exact path="/notas/registrar" element={<AddGrades />} />
+            <Route exact path="/notas/registrar" element={<AddGrades />} />
           </Route>
           <Route
             element={
@@ -118,8 +122,8 @@ export default function AppRouter() {
               />
             }
           >
-              <Route exact path="/alumnos/registrar" element={<AddStudent />} />
-              <Route exact path="/alumnos/listado" element={<Student />} />
+            <Route exact path="/alumnos/registrar" element={<AddStudent />} />
+            <Route exact path="/alumnos/listado" element={<Student />} />
           </Route>
 
           <Route
@@ -130,11 +134,23 @@ export default function AppRouter() {
               />
             }
           >
-              <Route exact path="/personal-instituto/registrar" element={<AddInstituteStaff />} />
-              <Route exact path="/personal-instituto/listado" element={<InstituteStaff />} />
+            <Route
+              exact
+              path="/personal-instituto/registrar"
+              element={<AddInstituteStaff />}
+            />
+            <Route
+              exact
+              path="/personal-instituto/listado"
+              element={<InstituteStaff />}
+            />
 
-              <Route exact path="/personal/registrar" element={<AddStaffUser />} />
-              <Route exact path="/personal/listado" element={<StaffUsers />} />
+            <Route
+              exact
+              path="/personal/registrar"
+              element={<AddStaffUser />}
+            />
+            <Route exact path="/personal/listado" element={<StaffUsers />} />
           </Route>
 
           <Route exact path="/perfil" element={<Profile />} />

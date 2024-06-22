@@ -10,12 +10,12 @@ import Swal from 'sweetalert2';
 import autosize from 'autosize';
 import lozad from 'lozad';
 import SmoothScroll from 'smoothscroll';
-import tns from 'tiny-slider';
+import {tns} from 'tiny-slider';
 import noUiSlider from 'nouislider';
 import wNumb from 'wnumb';
 //import 'select2/dist/css/select2.css';
 
-import { Select2 } from 'select2';
+ import { Select2 } from 'select2';
 
 
 import { Modal, Popover, Tab, Toast, Tooltip } from 'bootstrap';
@@ -24,7 +24,7 @@ import { Modal, Popover, Tab, Toast, Tooltip } from 'bootstrap';
   //
 
   // Init components
-/*   var KTComponents = (function() {
+/*   let KTComponents = (function() {
     // Public methods
     return {
       init: function() {
@@ -62,7 +62,194 @@ import { Modal, Popover, Tab, Toast, Tooltip } from 'bootstrap';
     window.KTComponents = module.exports = KTComponents;
   } */
 
-  var KTComponents = (function() {
+      // Class definition
+  var KTThemeMode = (function() {
+    let menu;
+    let callbacks = [];
+    let the = this;
+
+    let getMode = function() {
+      let mode;
+
+      if (document.documentElement.hasAttribute("data-bs-theme")) {
+        return document.documentElement.getAttribute("data-bs-theme");
+      } else if (localStorage.getItem("data-bs-theme") !== null) {
+        return localStorage.getItem("data-bs-theme");
+      } else if (getMenuMode() === "system") {
+        return getSystemMode();
+      }
+
+      return "light";
+    };
+
+    let setMode = function(mode, menuMode) {
+      let currentMode = getMode();
+
+      // Reset mode if system mode was changed
+      if (menuMode === "system") {
+        if (getSystemMode() !== mode) {
+          mode = getSystemMode();
+        }
+      } else if (mode !== menuMode) {
+        menuMode = mode;
+      }
+
+      // Read active menu mode value
+      let activeMenuItem = menu
+        ? menu.querySelector(
+            '[data-kt-element="mode"][data-kt-value="' + menuMode + '"]'
+          )
+        : null;
+
+      // Enable switching state
+      document.documentElement.setAttribute(
+        "data-kt-theme-mode-switching",
+        "true"
+      );
+
+      // Set mode to the target document.documentElement
+      document.documentElement.setAttribute("data-bs-theme", mode);
+
+      // Disable switching state
+      setTimeout(function() {
+        document.documentElement.removeAttribute(
+          "data-kt-theme-mode-switching"
+        );
+      }, 300);
+
+      // Store mode value in storage
+      localStorage.setItem("data-bs-theme", mode);
+
+      // Set active menu item
+      if (activeMenuItem) {
+        localStorage.setItem("data-bs-theme-mode", menuMode);
+        setActiveMenuItem(activeMenuItem);
+      }
+
+      if (mode !== currentMode) {
+        KTEventHandler.trigger(
+          document.documentElement,
+          "kt.thememode.change",
+          the
+        );
+      }
+    };
+
+    let getMenuMode = function() {
+      if (!menu) {
+        return null;
+      }
+
+      let menuItem = menu
+        ? menu.querySelector('.active[data-kt-element="mode"]')
+        : null;
+      let defaultThemeMode = "light";
+      if (menuItem && menuItem.getAttribute("data-kt-value")) {
+        return menuItem.getAttribute("data-kt-value");
+      } else if (document.documentElement.hasAttribute("data-bs-theme-mode")) {
+        return document.documentElement.getAttribute("data-bs-theme-mode");
+      } else if (localStorage.getItem("data-bs-theme-mode") !== null) {
+        return localStorage.getItem("data-bs-theme-mode");
+      } else {
+        return typeof defaultThemeMode !== "undefined"
+          ? defaultThemeMode
+          : "light";
+      }
+    };
+
+    let getSystemMode = function() {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
+    };
+
+    let initMode = function() {
+      setMode(getMode(), getMenuMode());
+      KTEventHandler.trigger(
+        document.documentElement,
+        "kt.thememode.init",
+        the
+      );
+    };
+
+    let getActiveMenuItem = function() {
+      return menu.querySelector(
+        '[data-kt-element="mode"][data-kt-value="' + getMenuMode() + '"]'
+      );
+    };
+
+    let setActiveMenuItem = function(item) {
+      let menuMode = item.getAttribute("data-kt-value");
+
+      let activeItem = menu.querySelector('.active[data-kt-element="mode"]');
+
+      if (activeItem) {
+        activeItem.classList.remove("active");
+      }
+
+      item.classList.add("active");
+      localStorage.setItem("data-bs-theme-mode", menuMode);
+    };
+
+    let handleMenu = function() {
+      let items = [].slice.call(
+        menu.querySelectorAll('[data-kt-element="mode"]')
+      );
+
+      items.map(function(item) {
+        item.addEventListener("click", function(e) {
+          e.preventDefault();
+
+          let menuMode = item.getAttribute("data-kt-value");
+          let mode = menuMode;
+
+          if (menuMode === "system") {
+            mode = getSystemMode();
+          }
+
+          setMode(mode, menuMode);
+        });
+      });
+    };
+
+    return {
+      init: function() {
+        menu = document.querySelector('[data-kt-element="theme-mode-menu"]');
+
+        initMode();
+
+        if (menu) {
+          handleMenu();
+        }
+      },
+
+      getMode: function() {
+        return getMode();
+      },
+
+      getMenuMode: function() {
+        return getMenuMode();
+      },
+
+      getSystemMode: function() {
+        return getSystemMode();
+      },
+
+      setMode: function(mode) {
+        return setMode(mode);
+      },
+
+      on: function(name, handler) {
+        return KTEventHandler.on(document.documentElement, name, handler);
+      },
+
+      off: function(name, handlerId) {
+        return KTEventHandler.off(document.documentElement, name, handlerId);
+      },
+    };
+  })();
+
+  let KTComponents = (function() {
     return {
 
       init: function () {
@@ -107,17 +294,17 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   //"use strict";
 
   // Class definition
-  var KTApp = (function() {
-    var initialized = false;
-    var select2FocusFixInitialized = false;
-    var countUpInitialized = false;
+  let KTApp = (function() {
+    let initialized = false;
+    let select2FocusFixInitialized = false;
+    let countUpInitialized = false;
 
-    var createBootstrapTooltip = function(el, options) {
+    let createBootstrapTooltip = function(el, options) {
       if (el.getAttribute("data-kt-initialized") === "1") {
         return;
       }
 
-      var delay = {};
+      let delay = {};
 
       // Handle delay options
       if (el.hasAttribute("data-bs-delay-hide")) {
@@ -135,13 +322,13 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       // Check dismiss options
       if (
         el.hasAttribute("data-bs-dismiss") &&
-        el.getAttribute("data-bs-dismiss") == "click"
+        el.getAttribute("data-bs-dismiss") === "click"
       ) {
         options["dismiss"] = "click";
       }
 
       // Initialize popover
-      var tp = new Tooltip(el, options);
+      let tp = new Tooltip(el, options);
 
       // Handle dismiss
       if (options["dismiss"] && options["dismiss"] === "click") {
@@ -156,22 +343,22 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return tp;
     };
 
-    var createBootstrapTooltips = function() {
-      var tooltipTriggerList = [].slice.call(
+    let createBootstrapTooltips = function() {
+      let tooltipTriggerList = [].slice.call(
         document.querySelectorAll('[data-bs-toggle="tooltip"]')
       );
 
-      var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+      let tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
         createBootstrapTooltip(tooltipTriggerEl, {});
       });
     };
 
-    var createBootstrapPopover = function(el, options) {
+    let createBootstrapPopover = function(el, options) {
       if (el.getAttribute("data-kt-initialized") === "1") {
         return;
       }
 
-      var delay = {};
+      let delay = {};
 
       // Handle delay options
       if (el.hasAttribute("data-bs-delay-hide")) {
@@ -197,23 +384,23 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
 
       // Initialize popover
-      var popover = new Popover(el, options);
+      let popover = new Popover(el, options);
 
       // Handle dismiss click
       if (options["dismiss"] === true) {
-        var dismissHandler = function(e) {
+        let dismissHandler = function(e) {
           popover.hide();
         };
 
         el.addEventListener("shown.bs.popover", function() {
-          var dismissEl = document.getElementById(
+          let dismissEl = document.getElementById(
             el.getAttribute("aria-describedby")
           );
           dismissEl.addEventListener("click", dismissHandler);
         });
 
         el.addEventListener("hide.bs.popover", function() {
-          var dismissEl = document.getElementById(
+          let dismissEl = document.getElementById(
             el.getAttribute("aria-describedby")
           );
           dismissEl.removeEventListener("click", dismissHandler);
@@ -225,19 +412,19 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return popover;
     };
 
-    var createBootstrapPopovers = function() {
-      var popoverTriggerList = [].slice.call(
+    let createBootstrapPopovers = function() {
+      let popoverTriggerList = [].slice.call(
         document.querySelectorAll('[data-bs-toggle="popover"]')
       );
 
-      var popoverList = popoverTriggerList.map(function(popoverTriggerEl) {
+      let popoverList = popoverTriggerList.map(function(popoverTriggerEl) {
         createBootstrapPopover(popoverTriggerEl, {});
       });
     };
 
-    var createBootstrapToasts = function() {
-      var toastElList = [].slice.call(document.querySelectorAll(".toast"));
-      var toastList = toastElList.map(function(toastEl) {
+    let createBootstrapToasts = function() {
+      let toastElList = [].slice.call(document.querySelectorAll(".toast"));
+      let toastList = toastElList.map(function(toastEl) {
         if (toastEl.getAttribute("data-kt-initialized") === "1") {
           return;
         }
@@ -248,8 +435,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var createButtons = function() {
-      var buttonsGroup = [].slice.call(
+    let createButtons = function() {
+      let buttonsGroup = [].slice.call(
         document.querySelectorAll('[data-kt-buttons="true"]')
       );
 
@@ -258,10 +445,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           return;
         }
 
-        var selector = group.hasAttribute("data-kt-buttons-target")
+        let selector = group.hasAttribute("data-kt-buttons-target")
           ? group.getAttribute("data-kt-buttons-target")
           : ".btn";
-        var activeButtons = [].slice.call(group.querySelectorAll(selector));
+        let activeButtons = [].slice.call(group.querySelectorAll(selector));
 
         // Toggle Handler
         KTUtil.on(group, selector, "click", function(e) {
@@ -276,7 +463,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var createDateRangePickers = function() {
+    let createDateRangePickers = function() {
       // Check if jQuery included
       if (typeof jQuery == "undefined") {
         return;
@@ -287,25 +474,25 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         return;
       }
 
-      var elements = [].slice.call(
+      let elements = [].slice.call(
         document.querySelectorAll('[data-kt-daterangepicker="true"]')
       );
-      var start = moment().subtract(29, "days");
-      var end = moment();
+      let start = moment().subtract(29, "days");
+      let end = moment();
 
       elements.map(function(element) {
         if (element.getAttribute("data-kt-initialized") === "1") {
           return;
         }
 
-        var display = element.querySelector("div");
-        var attrOpens = element.hasAttribute("data-kt-daterangepicker-opens")
+        let display = element.querySelector("div");
+        let attrOpens = element.hasAttribute("data-kt-daterangepicker-opens")
           ? element.getAttribute("data-kt-daterangepicker-opens")
           : "left";
-        var range = element.getAttribute("data-kt-daterangepicker-range");
+        let range = element.getAttribute("data-kt-daterangepicker-range");
 
-        var cb = function(start, end) {
-          var current = moment();
+        let cb = function(start, end) {
+          let current = moment();
 
           if (display) {
             if (current.isSame(start, "day") && current.isSame(end, "day")) {
@@ -358,7 +545,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var createSelect2 = function() {
+    let createSelect2 = function() {
       // Check if jQuery included
 /*       if (typeof $ == "undefined") {
         console.log('no jquery')
@@ -380,7 +567,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       $.fn.select2.defaults.set("width", "100%");
       $.fn.select2.defaults.set("selectionCssClass", ":all:");
 
-      var elements = [].slice.call(
+      let elements = [].slice.call(
         document.querySelectorAll(
           '[data-control="select2"], [data-kt-select2="true"]'
         )
@@ -391,7 +578,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           return;
         }
 
-        var options = {
+        let options = {
           dir: document.body.getAttribute("direction"),
         };
 
@@ -416,7 +603,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         select2FocusFixInitialized = true;
 
         $(document).on("select2:open", function(e) {
-          var elements = document.querySelectorAll(
+          let elements = document.querySelectorAll(
             ".select2-container--open .select2-search__field"
           );
 
@@ -427,12 +614,12 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var createAutosize = function() {
+    let createAutosize = function() {
       if (typeof autosize === "undefined") {
         return;
       }
 
-      var inputs = [].slice.call(
+      let inputs = [].slice.call(
         document.querySelectorAll('[data-kt-autosize="true"]')
       );
 
@@ -447,12 +634,12 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var createCountUp = function() {
+    let createCountUp = function() {
       if (typeof countUp === "undefined") {
         return;
       }
 
-      var elements = [].slice.call(
+      let elements = [].slice.call(
         document.querySelectorAll('[data-kt-countup="true"]:not(.counted)')
       );
 
@@ -462,9 +649,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
             return;
           }
 
-          var options = {};
+          let options = {};
 
-          var value = element.getAttribute("data-kt-countup-value");
+          let value = element.getAttribute("data-kt-countup-value");
           value = parseFloat(value.replace(/,/g, ""));
 
           if (element.hasAttribute("data-kt-countup-start-val")) {
@@ -499,7 +686,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
             options.suffix = element.getAttribute("data-kt-countup-suffix");
           }
 
-          var count = new CountUp(element, value, options);
+          let count = new CountUp(element, value, options);
 
           count.start();
 
@@ -510,7 +697,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var createCountUpTabs = function() {
+    let createCountUpTabs = function() {
       if (typeof countUp === "undefined") {
         return;
       }
@@ -524,7 +711,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
 
       // Tabs shown event handler
-      var tabs = [].slice.call(
+      let tabs = [].slice.call(
         document.querySelectorAll(
           '[data-kt-countup-tabs="true"][data-bs-toggle="tab"]'
         )
@@ -542,7 +729,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       countUpInitialized = true;
     };
 
-    var createTinySliders = function() {
+    let createTinySliders = function() {
       if (typeof tns === "undefined") {
         return;
       }
@@ -568,7 +755,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var initTinySlider = function(el) {
+    let initTinySlider = function(el) {
       if (!el) {
         return;
       }
@@ -633,7 +820,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return tns(opt);
     };
 
-    var initSmoothScroll = function() {
+    let initSmoothScroll = function() {
       if (initialized === true) {
         return;
       }
@@ -641,7 +828,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       if (typeof SmoothScroll === "undefined") {
         return;
       }
-      var element = document.querySelector('a[data-kt-scroll-toggle][href*="#"]');
+      let element = document.querySelector('a[data-kt-scroll-toggle][href*="#"]');
   
       if (element instanceof Element) {
         // comprueba si el elemento ha sido agregado al DOM
@@ -657,7 +844,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       
                 // An example returning different values based on whether the clicked link was in the header nav or not
                 if (anchor.hasAttribute("data-kt-scroll-offset")) {
-                  var val = KTUtil.getResponsiveValue(
+                  let val = KTUtil.getResponsiveValue(
                     anchor.getAttribute("data-kt-scroll-offset")
                   );
       
@@ -677,7 +864,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
     };
 
-    var initCard = function() {
+    let initCard = function() {
       // Toggle Handler
       KTUtil.on(
         document.body,
@@ -723,8 +910,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       );
     };
 
-    var initModal = function() {
-      var elements = Array.prototype.slice.call(
+    let initModal = function() {
+      let elements = Array.prototype.slice.call(
         document.querySelectorAll("[data-bs-stacked-modal]")
       );
 
@@ -752,15 +939,15 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var initCheck = function() {
+    let initCheck = function() {
       if (initialized === true) {
         return;
       }
 
       // Toggle Handler
       KTUtil.on(document.body, '[data-kt-check="true"]', "change", function(e) {
-        var check = this;
-        var targets = document.querySelectorAll(
+        let check = this;
+        let targets = document.querySelectorAll(
           check.getAttribute("data-kt-check-target")
         );
 
@@ -774,7 +961,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var initBootstrapCollapse = function() {
+    let initBootstrapCollapse = function() {
       if (initialized === true) {
         return;
       }
@@ -790,13 +977,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           } else {
             this.classList.add("active");
           }
+          let target;
 
           if (this.hasAttribute("data-kt-toggle-text")) {
-            var text = this.getAttribute("data-kt-toggle-text");
-            var target = this.querySelector(
+            let text = this.getAttribute("data-kt-toggle-text");
+            target = this.querySelector(
               '[data-kt-toggle-text-target="true"]'
             );
-            var target = target ? target : this;
+            target = target ? target : this;
 
             this.setAttribute("data-kt-toggle-text", target.innerText);
             target.innerText = text;
@@ -805,7 +993,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       );
     };
 
-    var initBootstrapRotate = function() {
+    let initBootstrapRotate = function() {
       if (initialized === true) {
         return;
       }
@@ -820,7 +1008,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var initLozad = function() {
+    let initLozad = function() {
       // Check if lozad included
       if (typeof lozad === "undefined") {
         return;
@@ -830,12 +1018,12 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       observer.observe();
     };
 
-    var showPageLoading = function() {
+    let showPageLoading = function() {
       document.body.classList.add("page-loading");
       document.body.setAttribute("data-kt-app-page-loading", "on");
     };
 
-    var hidePageLoading = function() {
+    let hidePageLoading = function() {
       // CSS3 Transitions only after page load(.page-loading or .app-page-loading class added to body tag and remove with JS on page load)
       document.body.classList.remove("page-loading");
       document.body.removeAttribute("data-kt-app-page-loading");
@@ -909,18 +1097,18 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  var KTBlockUI = function(element, options) {
+  let KTBlockUI = function(element, options) {
     //////////////////////////////
     // ** Private variables  ** //
     //////////////////////////////
-    var the = this;
+    let the = this;
 
     if (typeof element === "undefined" || element === null) {
       return;
     }
 
     // Default options
-    var defaultOptions = {
+    let defaultOptions = {
       zIndex: false,
       overlayClass: "",
       overflow: "hidden",
@@ -931,7 +1119,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     // ** Private methods  ** //
     ////////////////////////////
 
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("blockui")) {
         the = KTUtil.data(element).get("blockui");
       } else {
@@ -939,7 +1127,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _init = function() {
+    let _init = function() {
       // Variables
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
       the.element = element;
@@ -952,18 +1140,18 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.data(the.element).set("blockui", the);
     };
 
-    var _block = function() {
+    let _block = function() {
       if (
         KTEventHandler.trigger(the.element, "kt.blockui.block", the) === false
       ) {
         return;
       }
 
-      var isPage = the.element.tagName === "BODY";
+      let isPage = the.element.tagName === "BODY";
 
-      var position = KTUtil.css(the.element, "position");
-      var overflow = KTUtil.css(the.element, "overflow");
-      var zIndex = isPage ? 10000 : 1;
+      let position = KTUtil.css(the.element, "position");
+      let overflow = KTUtil.css(the.element, "overflow");
+      let zIndex = isPage ? 10000 : 1;
 
       if (the.options.zIndex > 0) {
         zIndex = the.options.zIndex;
@@ -1005,7 +1193,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTEventHandler.trigger(the.element, "kt.blockui.after.blocked", the);
     };
 
-    var _release = function() {
+    let _release = function() {
       if (
         KTEventHandler.trigger(the.element, "kt.blockui.release", the) === false
       ) {
@@ -1031,11 +1219,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTEventHandler.trigger(the.element, "kt.blockui.released", the);
     };
 
-    var _isBlocked = function() {
+    let _isBlocked = function() {
       return the.blocked;
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("blockui");
     };
 
@@ -1098,12 +1286,12 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // DOCS: https://javascript.info/cookie
 
   // Class definition
-  var KTCookie = (function() {
+  let KTCookie = (function() {
     return {
       // returns the cookie with the given name,
       // or undefined if not found
       get: function(name) {
-        var matches = document.cookie.match(
+        let matches = document.cookie.match(
           new RegExp(
             "(?:^|; )" +
               name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, "\\$1") +
@@ -1133,16 +1321,16 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           options.expires = options.expires.toUTCString();
         }
 
-        var updatedCookie =
+        let updatedCookie =
           encodeURIComponent(name) + "=" + encodeURIComponent(value);
 
-        for (var optionKey in options) {
+        for (let optionKey in options) {
           if (options.hasOwnProperty(optionKey) === false) {
             continue;
           }
 
           updatedCookie += "; " + optionKey;
-          var optionValue = options[optionKey];
+          let optionValue = options[optionKey];
 
           if (optionValue !== true) {
             updatedCookie += "=" + optionValue;
@@ -1169,18 +1357,18 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  var KTDialer = function(element, options) {
+  let KTDialer = function(element, options) {
     ////////////////////////////
     // ** Private variables  ** //
     ////////////////////////////
-    var the = this;
+    let the = this;
 
     if (!element) {
       return;
     }
 
     // Default options
-    var defaultOptions = {
+    let defaultOptions = {
       min: null,
       max: null,
       step: 1,
@@ -1194,7 +1382,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     ////////////////////////////
 
     // Constructor
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("dialer") === true) {
         the = KTUtil.data(element).get("dialer");
       } else {
@@ -1203,7 +1391,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Initialize
-    var _init = function() {
+    let _init = function() {
       // Variables
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
 
@@ -1254,7 +1442,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Handlers
-    var _handlers = function() {
+    let _handlers = function() {
       KTUtil.addEvent(the.incElement, "click", function(e) {
         e.preventDefault();
 
@@ -1275,7 +1463,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Event handlers
-    var _increase = function() {
+    let _increase = function() {
       // Trigger "after.dialer" event
       KTEventHandler.trigger(the.element, "kt.dialer.increase", the);
 
@@ -1288,7 +1476,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return the;
     };
 
-    var _decrease = function() {
+    let _decrease = function() {
       // Trigger "after.dialer" event
       KTEventHandler.trigger(the.element, "kt.dialer.decrease", the);
 
@@ -1303,7 +1491,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Set Input Value
-    var _setValue = function(value) {
+    let _setValue = function(value) {
       // Trigger "after.dialer" event
       KTEventHandler.trigger(the.element, "kt.dialer.change", the);
 
@@ -1330,7 +1518,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTEventHandler.trigger(the.element, "kt.dialer.changed", the);
     };
 
-    var _parse = function(val) {
+    let _parse = function(val) {
       val = val
         .replace(/[^0-9.-]/g, "") // remove chars except number, hyphen, point.
         .replace(/(\..*)\./g, "$1") // remove multiple points.
@@ -1347,7 +1535,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Format
-    var _format = function(val) {
+    let _format = function(val) {
       return (
         the.options.prefix +
         parseFloat(val).toFixed(the.options.decimals) +
@@ -1356,10 +1544,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get option
-    var _getOption = function(name) {
+    let _getOption = function(name) {
       if (the.element.hasAttribute("data-kt-dialer-" + name) === true) {
-        var attr = the.element.getAttribute("data-kt-dialer-" + name);
-        var value = attr;
+        let attr = the.element.getAttribute("data-kt-dialer-" + name);
+        let value = attr;
 
         return value;
       } else {
@@ -1367,7 +1555,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("dialer");
     };
 
@@ -1445,10 +1633,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Create instances
   KTDialer.createInstances = function(selector = '[data-kt-dialer="true"]') {
     // Get instances
-    var elements = document.querySelectorAll(selector);
+    let elements = document.querySelectorAll(selector);
 
     if (elements && elements.length > 0) {
-      for (var i = 0, len = elements.length; i < len; i++) {
+      for (let i = 0, len = elements.length; i < len; i++) {
         new KTDialer(elements[i]);
       }
     }
@@ -1465,21 +1653,21 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   }
 //("use strict");
 
-  var KTDrawerHandlersInitialized = false;
+  let KTDrawerHandlersInitialized = false;
 
   // Class definition
-/*   var KTDrawer = function(element, options) {
+/*   let KTDrawer = function(element, options) {
     //////////////////////////////
     // ** Private variables  ** //
     //////////////////////////////
-    var the = this;
+    let the = this;
 
     if (typeof element === "undefined" || element === null) {
       return;
     }
 
     // Default options
-    var defaultOptions = {
+    let defaultOptions = {
       overlay: true,
       direction: "end",
       baseClass: "drawer",
@@ -1490,7 +1678,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     // ** Private methods  ** //
     ////////////////////////////
 
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("drawer")) {
         the = KTUtil.data(element).get("drawer");
       } else {
@@ -1498,7 +1686,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _init = function() {
+    let _init = function() {
       // Variables
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
       the.uid = KTUtil.getUniqueId("drawer");
@@ -1522,9 +1710,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.data(the.element).set("drawer", the);
     };
 
-    var _handlers = function() {
-      var togglers = _getOption("toggle");
-      var closers = _getOption("close");
+    let _handlers = function() {
+      let togglers = _getOption("toggle");
+      let closers = _getOption("close");
 
       if (togglers !== null && togglers.length > 0) {
         KTUtil.on(document.body, togglers, "click", function(e) {
@@ -1545,7 +1733,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _toggle = function() {
+    let _toggle = function() {
       if (
         KTEventHandler.trigger(the.element, "kt.drawer.toggle", the) === false
       ) {
@@ -1561,7 +1749,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTEventHandler.trigger(the.element, "kt.drawer.toggled", the);
     };
 
-    var _hide = function() {
+    let _hide = function() {
       if (
         KTEventHandler.trigger(the.element, "kt.drawer.hide", the) === false
       ) {
@@ -1585,7 +1773,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         false;
     };
 
-    var _show = function() {
+    let _show = function() {
       if (
         KTEventHandler.trigger(the.element, "kt.drawer.show", the) === false
       ) {
@@ -1607,14 +1795,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTEventHandler.trigger(the.element, "kt.drawer.shown", the);
     };
 
-    var _update = function() {
-      var width = _getWidth();
-      var direction = _getOption("direction");
+    let _update = function() {
+      let width = _getWidth();
+      let direction = _getOption("direction");
 
-      var top = _getOption("top");
-      var bottom = _getOption("bottom");
-      var start = _getOption("start");
-      var end = _getOption("end");
+      let top = _getOption("top");
+      let bottom = _getOption("bottom");
+      let start = _getOption("start");
+      let end = _getOption("end");
 
       // Reset state
       if (
@@ -1696,7 +1884,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _createOverlay = function() {
+    let _createOverlay = function() {
       if (_getOption("overlay") === true) {
         the.overlayElement = document.createElement("DIV");
 
@@ -1720,16 +1908,16 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _deleteOverlay = function() {
+    let _deleteOverlay = function() {
       if (the.overlayElement !== null) {
         KTUtil.remove(the.overlayElement);
       }
     };
 
-    var _getOption = function(name) {
+    let _getOption = function(name) {
       if (the.element.hasAttribute("data-kt-drawer-" + name) === true) {
-        var attr = the.element.getAttribute("data-kt-drawer-" + name);
-        var value = KTUtil.getResponsiveValue(attr);
+        let attr = the.element.getAttribute("data-kt-drawer-" + name);
+        let value = KTUtil.getResponsiveValue(attr);
 
         if (value !== null && String(value) === "true") {
           value = true;
@@ -1739,7 +1927,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
         return value;
       } else {
-        var optionName = KTUtil.snakeToCamel(name);
+        let optionName = KTUtil.snakeToCamel(name);
 
         if (the.options[optionName]) {
           return KTUtil.getResponsiveValue(the.options[optionName]);
@@ -1749,8 +1937,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _getWidth = function() {
-      var width = _getOption("width");
+    let _getWidth = function() {
+      let width = _getOption("width");
 
       if (width === "auto") {
         width = KTUtil.css(the.element, "width");
@@ -1759,7 +1947,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return width;
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("drawer");
     };
 
@@ -1831,12 +2019,12 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     skip = null,
     selector = '[data-kt-drawer="true"]'
   ) {
-    var items = document.querySelectorAll(selector);
+    let items = document.querySelectorAll(selector);
 
     if (items && items.length > 0) {
-      for (var i = 0, len = items.length; i < len; i++) {
-        var item = items[i];
-        var drawer = KTDrawer.getInstance(item);
+      for (let i = 0, len = items.length; i < len; i++) {
+        let item = items[i];
+        let drawer = KTDrawer.getInstance(item);
 
         if (!drawer) {
           continue;
@@ -1855,11 +2043,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
   // Update all drawers
   KTDrawer.updateAll = function(selector = '[data-kt-drawer="true"]') {
-    var items = document.querySelectorAll(selector);
+    let items = document.querySelectorAll(selector);
 
     if (items && items.length > 0) {
-      for (var i = 0, len = items.length; i < len; i++) {
-        var drawer = KTDrawer.getInstance(items[i]);
+      for (let i = 0, len = items.length; i < len; i++) {
+        let drawer = KTDrawer.getInstance(items[i]);
 
         if (drawer) {
           drawer.update();
@@ -1871,10 +2059,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Create instances
   KTDrawer.createInstances = function(selector = '[data-kt-drawer="true"]') {
     // Initialize Menus
-    var elements = document.querySelectorAll(selector);
+    let elements = document.querySelectorAll(selector);
 
     if (elements && elements.length > 0) {
-      for (var i = 0, len = elements.length; i < len; i++) {
+      for (let i = 0, len = elements.length; i < len; i++) {
         new KTDrawer(elements[i]);
       }
     }
@@ -1890,7 +2078,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       function(e) {
         e.preventDefault();
 
-        var element = document.querySelector(
+        let element = document.querySelector(
           this.getAttribute("data-kt-drawer-target")
         );
 
@@ -1909,10 +2097,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       '[data-kt-drawer-dismiss="true"]',
       "click",
       function(e) {
-        var element = this.closest('[data-kt-drawer="true"]');
+        let element = this.closest('[data-kt-drawer="true"]');
 
         if (element) {
-          var drawer = KTDrawer.getInstance(element);
+          let drawer = KTDrawer.getInstance(element);
           if (drawer.isShown()) {
             drawer.hide();
           }
@@ -1925,17 +2113,17 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   KTDrawer.handleResize = function() {
     // Window resize Handling
     window.addEventListener("resize", function() {
-      var timer;
+      let timer;
 
       KTUtil.throttle(
         timer,
         function() {
           // Locate and update drawer instances on window resize
-          var elements = document.querySelectorAll('[data-kt-drawer="true"]');
+          let elements = document.querySelectorAll('[data-kt-drawer="true"]');
 
           if (elements && elements.length > 0) {
-            for (var i = 0, len = elements.length; i < len; i++) {
-              var drawer = KTDrawer.getInstance(elements[i]);
+            for (let i = 0, len = elements.length; i < len; i++) {
+              let drawer = KTDrawer.getInstance(elements[i]);
               if (drawer) {
                 drawer.update();
               }
@@ -1967,29 +2155,29 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  var KTEventHandler = (function() {
+  let KTEventHandler = (function() {
     ////////////////////////////
     // ** Private Variables  ** //
     ////////////////////////////
-    var _handlers = {};
+    let _handlers = {};
 
     ////////////////////////////
     // ** Private Methods  ** //
     ////////////////////////////
-    var _triggerEvent = function(element, name, target) {
-      var returnValue = true;
-      var eventValue;
+    let _triggerEvent = function(element, name, target) {
+      let returnValue = true;
+      let eventValue;
 
       if (KTUtil.data(element).has(name) === true) {
-        var handlerIds = KTUtil.data(element).get(name);
-        var handlerId;
+        let handlerIds = KTUtil.data(element).get(name);
+        let handlerId;
 
-        for (var i = 0; i < handlerIds.length; i++) {
+        for (let i = 0; i < handlerIds.length; i++) {
           handlerId = handlerIds[i];
 
           if (_handlers[name] && _handlers[name][handlerId]) {
-            var handler = _handlers[name][handlerId];
-            var value;
+            let handler = _handlers[name][handlerId];
+            let value;
 
             if (handler.name === name) {
               if (handler.one == true) {
@@ -2013,9 +2201,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return returnValue;
     };
 
-    var _addEvent = function(element, name, callback, one) {
-      var handlerId = KTUtil.getUniqueId("event");
-      var handlerIds = KTUtil.data(element).get(name);
+    let _addEvent = function(element, name, callback, one) {
+      let handlerId = KTUtil.getUniqueId("event");
+      let handlerIds = KTUtil.data(element).get(name);
 
       if (!handlerIds) {
         handlerIds = [];
@@ -2039,9 +2227,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return handlerId;
     };
 
-    var _removeEvent = function(element, name, handlerId) {
-      var handlerIds = KTUtil.data(element).get(name);
-      var index = handlerIds && handlerIds.indexOf(handlerId);
+    let _removeEvent = function(element, name, handlerId) {
+      let handlerIds = KTUtil.data(element).get(name);
+      let index = handlerIds && handlerIds.indexOf(handlerId);
 
       if (index !== -1) {
         handlerIds.splice(index, 1);
@@ -2074,7 +2262,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       debug: function() {
-        for (var b in _handlers) {
+        for (let b in _handlers) {
           if (_handlers.hasOwnProperty(b)) console.log(b);
         }
       },
@@ -2089,14 +2277,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-/*   var KTFeedback = function(options) {
+/*   let KTFeedback = function(options) {
     ////////////////////////////
     // ** Private Variables  ** //
     ////////////////////////////
-    var the = this;
+    let the = this;
 
     // Default options
-    var defaultOptions = {
+    let defaultOptions = {
       width: 100,
       placement: "top-center",
       content: "",
@@ -2107,11 +2295,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     // ** Private methods  ** //
     ////////////////////////////
 
-    var _construct = function() {
+    let _construct = function() {
       _init();
     };
 
-    var _init = function() {
+    let _init = function() {
       // Variables
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
       the.uid = KTUtil.getUniqueId("feedback");
@@ -2125,7 +2313,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.data(the.element).set("feedback", the);
     };
 
-    var _handlers = function() {
+    let _handlers = function() {
       KTUtil.addEvent(the.element, "click", function(e) {
         e.preventDefault();
 
@@ -2133,7 +2321,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var _show = function() {
+    let _show = function() {
       if (
         KTEventHandler.trigger(the.element, "kt.feedback.show", the) === false
       ) {
@@ -2149,7 +2337,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return the;
     };
 
-    var _hide = function() {
+    let _hide = function() {
       if (
         KTEventHandler.trigger(the.element, "kt.feedback.hide", the) === false
       ) {
@@ -2167,7 +2355,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return the;
     };
 
-    var _showPopup = function() {
+    let _showPopup = function() {
       the.element = document.createElement("DIV");
 
       KTUtil.addClass(the.element, "feedback feedback-popup");
@@ -2184,9 +2372,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       the.shown = true;
     };
 
-    var _setPopupTopCenterPosition = function() {
-      var width = KTUtil.getResponsiveValue(the.options.width);
-      var height = KTUtil.css(the.element, "height");
+    let _setPopupTopCenterPosition = function() {
+      let width = KTUtil.getResponsiveValue(the.options.width);
+      let height = KTUtil.css(the.element, "height");
 
       KTUtil.addClass(the.element, "feedback-top-center");
 
@@ -2195,11 +2383,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.css(the.element, "top", "-" + height);
     };
 
-    var _hidePopup = function() {
+    let _hidePopup = function() {
       the.element.remove();
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("feedback");
     };
 
@@ -2257,24 +2445,24 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  var KTImageInput = function(element, options) {
+  let KTImageInput = function(element, options) {
     ////////////////////////////
     // ** Private Variables  ** //
     ////////////////////////////
-    var the = this;
+    let the = this;
 
     if (typeof element === "undefined" || element === null) {
       return;
     }
 
     // Default Options
-    var defaultOptions = {};
+    let defaultOptions = {};
 
     ////////////////////////////
     // ** Private Methods  ** //
     ////////////////////////////
 
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("image-input") === true) {
         the = KTUtil.data(element).get("image-input");
       } else {
@@ -2282,7 +2470,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _init = function() {
+    let _init = function() {
       // Variables
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
       the.uid = KTUtil.getUniqueId("image-input");
@@ -2313,14 +2501,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Init Event Handlers
-    var _handlers = function() {
+    let _handlers = function() {
       KTUtil.addEvent(the.inputElement, "change", _change);
       KTUtil.addEvent(the.cancelElement, "click", _cancel);
       KTUtil.addEvent(the.removeElement, "click", _remove);
     };
 
     // Event Handlers
-    var _change = function(e) {
+    let _change = function(e) {
       e.preventDefault();
 
       if (
@@ -2336,7 +2524,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           return;
         }
 
-        var reader = new FileReader();
+        let reader = new FileReader();
 
         reader.onload = function(e) {
           KTUtil.css(
@@ -2356,7 +2544,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _cancel = function(e) {
+    let _cancel = function(e) {
       e.preventDefault();
 
       // Fire cancel event
@@ -2387,7 +2575,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTEventHandler.trigger(the.element, "kt.imageinput.canceled", the);
     };
 
-    var _remove = function(e) {
+    let _remove = function(e) {
       e.preventDefault();
 
       // Fire remove event
@@ -2412,7 +2600,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTEventHandler.trigger(the.element, "kt.imageinput.removed", the);
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("image-input");
     };
 
@@ -2466,10 +2654,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Create instances
   KTImageInput.createInstances = function(selector = "[data-kt-image-input]") {
     // Initialize Menus
-    var elements = document.querySelectorAll(selector);
+    let elements = document.querySelectorAll(selector);
 
     if (elements && elements.length > 0) {
-      for (var i = 0, len = elements.length; i < len; i++) {
+      for (let i = 0, len = elements.length; i < len; i++) {
         new KTImageInput(elements[i]);
       }
     }
@@ -2487,21 +2675,21 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
 //("use strict");
 
-  var KTMenuHandlersInitialized = false;
+  let KTMenuHandlersInitialized = false;
 
   // Class definition
-  var KTMenu = function(element, options) {
+  let KTMenu = function(element, options) {
     ////////////////////////////
     // ** Private Variables  ** //
     ////////////////////////////
-    var the = this;
+    let the = this;
 
     if (typeof element === "undefined" || element === null) {
       return;
     }
 
     // Default Options
-    var defaultOptions = {
+    let defaultOptions = {
       dropdown: {
         hoverTimeout: 200,
         zindex: 107,
@@ -2517,7 +2705,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     // ** Private Methods  ** //
     ////////////////////////////
 
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("menu") === true) {
         the = KTUtil.data(element).get("menu");
       } else {
@@ -2525,7 +2713,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _init = function() {
+    let _init = function() {
       
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
       the.uid = KTUtil.getUniqueId("menu");
@@ -2542,18 +2730,18 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.data(the.element).set("menu", the);
     };
 
-    var _destroy = function() {
-      // todo
-    };
+/*     let _destroy = function() {
+      // TODO
+    }; */
 
     // Event Handlers
     // Toggle handler
-    var _click = function(element, e) {
+    let _click = function(element, e) {
       e.preventDefault();
 
       if (the.disabled === true) {return;}
 
-      var item = _getItemElement(element);
+      let item = _getItemElement(element);
     
 
 
@@ -2570,7 +2758,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Link handler
-    var _link = function(element, e) {
+    let _link = function(element, e) {
       if (the.disabled === true) {
         return;
       }
@@ -2589,16 +2777,16 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Dismiss handler
-    var _dismiss = function(element, e) {
-      var item = _getItemElement(element);
-      var items = _getItemChildElements(item);
+    let _dismiss = function(element, e) {
+      let item = _getItemElement(element);
+      let items = _getItemChildElements(item);
 
       if (item !== null && _getItemSubType(item) === "dropdown") {
         _hide(item); // hide items dropdown
         // Hide all child elements as well
 
         if (items.length > 0) {
-          for (var i = 0, len = items.length; i < len; i++) {
+          for (let i = 0, len = items.length; i < len; i++) {
             if (items[i] !== null && _getItemSubType(items[i]) === "dropdown") {
               _hide(items[i]);
             }
@@ -2608,8 +2796,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Mouseover handle
-    var _mouseover = function(element, e) {
-      var item = _getItemElement(element);
+    let _mouseover = function(element, e) {
+      let item = _getItemElement(element);
 
       if (the.disabled === true) {
         return;
@@ -2633,8 +2821,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Mouseout handle
-    var _mouseout = function(element, e) {
-      var item = _getItemElement(element);
+    let _mouseout = function(element, e) {
+      let item = _getItemElement(element);
 
       if (the.disabled === true) {
         return;
@@ -2648,7 +2836,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         return;
       }
 
-      var timeout = setTimeout(function() {
+      let timeout = setTimeout(function() {
         if (KTUtil.data(item).get("hover") === "1") {
           _hide(item);
         }
@@ -2659,7 +2847,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Toggle item sub
-    var _toggle = function(item) {
+    let _toggle = function(item) {
       if (!item) {
         item = the.triggerElement;
       }
@@ -2672,7 +2860,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Show item sub
-    var _show = function(item) {
+    let _show = function(item) {
       if (!item) {
         item = the.triggerElement;
       }
@@ -2692,7 +2880,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Hide item sub
-    var _hide = function(item) {
+    let _hide = function(item) {
       if (!item) {
         item = the.triggerElement;
       }
@@ -2709,12 +2897,12 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Reset item state classes if item sub type changed
-    var _reset = function(item) {
+    let _reset = function(item) {
       if (_hasItemSub(item) === false) {
         return;
       }
 
-      var sub = _getItemSubElement(item);
+      let sub = _getItemSubElement(item);
 
       // Reset sub state if sub type is changed during the window resize
       if (
@@ -2729,22 +2917,22 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Update all item state classes if item sub type changed
-    var _update = function() {
+    let _update = function() {
       
-      var items = the.element.querySelectorAll(
+      let items = the.element.querySelectorAll(
         ".menu-item[data-kt-menu-trigger]"
       );
        
       if (items && items.length > 0) {
-        for (var i = 0, len = items.length; i < len; i++) {
+        for (let i = 0, len = items.length; i < len; i++) {
           _reset(items[i]);
         }
       }
     };
 
     // Set external trigger element
-    var _setTriggerElement = function() {
-      var target = document.querySelector(
+    let _setTriggerElement = function() {
+      let target = document.querySelector(
         '[data-kt-menu-target="#' + the.element.getAttribute("id") + '"]'
       );
 
@@ -2768,13 +2956,13 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Test if menu has external trigger element
-    var _isTriggerElement = function(item) {
+    let _isTriggerElement = function(item) {
       return the.triggerElement === item ? true : false;
     };
 
     // Test if item's sub is shown
-    var _isItemSubShown = function(item) {
-      var sub = _getItemSubElement(item);
+    let _isItemSubShown = function(item) {
+      let sub = _getItemSubElement(item);
 
       if (sub !== null) {
         if (_getItemSubType(item) === "dropdown") {
@@ -2795,24 +2983,24 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Test if item dropdown is permanent
-    var _isItemDropdownPermanent = function(item) {
+    let _isItemDropdownPermanent = function(item) {
       return _getOptionFromElementAttribute(item, "permanent") === true
         ? true
         : false;
     };
 
     // Test if item's parent is shown
-    var _isItemParentShown = function(item) {
+    let _isItemParentShown = function(item) {
       return KTUtil.parents(item, ".menu-item.show").length > 0;
     };
 
     // Test of it is item sub element
-    var _isItemSubElement = function(item) {
+    let _isItemSubElement = function(item) {
       return KTUtil.hasClass(item, "menu-sub");
     };
 
     // Test if item has sub
-    var _hasItemSub = function(item) {
+    let _hasItemSub = function(item) {
       return (
         KTUtil.hasClass(item, "menu-item") &&
         item.hasAttribute("data-kt-menu-trigger")
@@ -2820,12 +3008,12 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get link element
-    var _getItemLinkElement = function(item) {
+    let _getItemLinkElement = function(item) {
       return KTUtil.child(item, ".menu-link");
     };
 
     // Get toggle element
-    var _getItemToggleElement = function(item) {
+    let _getItemToggleElement = function(item) {
       if (the.triggerElement) {
         return the.triggerElement;
       } else {
@@ -2834,7 +3022,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get item sub element
-    var _getItemSubElement = function(item) {
+    let _getItemSubElement = function(item) {
       if (_isTriggerElement(item) === true) {
         return the.element;
       }
@@ -2848,8 +3036,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get item sub type
-    var _getItemSubType = function(element) {
-      var sub = _getItemSubElement(element);
+    let _getItemSubType = function(element) {
+      let sub = _getItemSubElement(element);
 
       if (sub && parseInt(KTUtil.css(sub, "z-index")) > 0) {
         return "dropdown";
@@ -2859,8 +3047,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get item element
-    var _getItemElement = function(element) {
-      var item, sub;
+    let _getItemElement = function(element) {
+      let item, sub;
 
       // Element is the external trigger element
       if (_isTriggerElement(element)) {
@@ -2891,9 +3079,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get item parent element
-    var _getItemParentElement = function(item) {
-      var sub = item.closest(".menu-sub");
-      var parentItem;
+    let _getItemParentElement = function(item) {
+      let sub = item.closest(".menu-sub");
+      let parentItem;
 
       if (sub && KTUtil.data(sub).has("item")) {
         return KTUtil.data(sub).get("item");
@@ -2910,10 +3098,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get item parent elements
-    var _getItemParentElements = function(item) {
-      var parents = [];
-      var parent;
-      var i = 0;
+    let _getItemParentElements = function(item) {
+      let parents = [];
+      let parent;
+      let i = 0;
 
       do {
         parent = _getItemParentElement(item);
@@ -2934,9 +3122,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get item child element
-    var _getItemChildElement = function(item) {
-      var selector = item;
-      var element;
+    let _getItemChildElement = function(item) {
+      let selector = item;
+      let element;
 
       if (KTUtil.data(item).get("sub")) {
         selector = KTUtil.data(item).get("sub");
@@ -2957,10 +3145,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get item child elements
-    var _getItemChildElements = function(item) {
-      var children = [];
-      var child;
-      var i = 0;
+    let _getItemChildElements = function(item) {
+      let children = [];
+      let child;
+      let i = 0;
 
       do {
         child = _getItemChildElement(item);
@@ -2977,7 +3165,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Show item dropdown
-    var _showDropdown = function(item) {
+    let _showDropdown = function(item) {
       // Handle dropdown show event
       if (
         KTEventHandler.trigger(the.element, "kt.menu.dropdown.show", item) ===
@@ -2989,14 +3177,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       // Hide all currently shown dropdowns except current one
       KTMenu.hideDropdowns(item);
 
-      var toggle = _isTriggerElement(item) ? item : _getItemLinkElement(item);
-      var sub = _getItemSubElement(item);
+      let toggle = _isTriggerElement(item) ? item : _getItemLinkElement(item);
+      let sub = _getItemSubElement(item);
 
-      var width = _getOptionFromElementAttribute(item, "width");
-      var height = _getOptionFromElementAttribute(item, "height");
+      let width = _getOptionFromElementAttribute(item, "width");
+      let height = _getOptionFromElementAttribute(item, "height");
 
-      var zindex = the.options.dropdown.zindex; // update
-      var parentZindex = KTUtil.getHighestZindex(item); // update
+      let zindex = the.options.dropdown.zindex; // update
+      let parentZindex = KTUtil.getHighestZindex(item); // update
 
       // Apply a new z-index if dropdown's toggle element or it's parent has greater z-index // update
       if (parentZindex !== null && parentZindex >= zindex) {
@@ -3040,7 +3228,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Hide item dropdown
-    var _hideDropdown = function(item) {
+    let _hideDropdown = function(item) {
       // Handle dropdown hide event
       if (
         KTEventHandler.trigger(the.element, "kt.menu.dropdown.hide", item) ===
@@ -3049,7 +3237,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         return;
       }
 
-      var sub = _getItemSubElement(item);
+      let sub = _getItemSubElement(item);
 
       KTUtil.css(sub, "z-index", "");
       KTUtil.css(sub, "width", "");
@@ -3080,11 +3268,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Init dropdown popper(new)
-    var _initDropdownPopper = function(item, sub) {
+    let _initDropdownPopper = function(item, sub) {
       // Setup popper instance
       //console.log('INICIALIZANDO POPER')
-      var reference;
-      var attach = _getOptionFromElementAttribute(item, "attach");
+      let reference;
+      let attach = _getOptionFromElementAttribute(item, "attach");
 
       if (attach) {
         if (attach === "parent") {
@@ -3096,7 +3284,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         reference = item;
       }
 
-      var popper = createPopper(
+      let popper = createPopper(
         reference,
         sub,
         _getDropdownPopperConfig(item)
@@ -3105,7 +3293,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Destroy dropdown popper(new)
-    var _destroyDropdownPopper = function(item) {
+    let _destroyDropdownPopper = function(item) {
       if (KTUtil.data(item).has("popper") === true) {
         KTUtil.data(item)
           .get("popper")
@@ -3115,16 +3303,16 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Prepare popper config for dropdown(see: https://popper.js.org/docs/v2/)
-    var _getDropdownPopperConfig = function(item) {
+    let _getDropdownPopperConfig = function(item) {
       // Placement
-      var placement = _getOptionFromElementAttribute(item, "placement");
+      let placement = _getOptionFromElementAttribute(item, "placement");
       if (!placement) {
         placement = "right";
       }
 
       // Offset
-      var offsetValue = _getOptionFromElementAttribute(item, "offset");
-      var offset = offsetValue ? offsetValue.split(",") : [];
+      let offsetValue = _getOptionFromElementAttribute(item, "offset");
+      let offset = offsetValue ? offsetValue.split(",") : [];
 
       if (offset.length === 2) {
         offset[0] = parseInt(offset[0]);
@@ -3132,15 +3320,15 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
 
       // Strategy
-      var strategy =
+      let strategy =
         _getOptionFromElementAttribute(item, "overflow") === true
           ? "absolute"
           : "fixed";
 
-      var altAxis =
+      let altAxis =
         _getOptionFromElementAttribute(item, "flip") !== false ? true : false;
 
-      var popperConfig = {
+      let popperConfig = {
         placement: placement,
         strategy: strategy,
         modifiers: [
@@ -3169,7 +3357,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Show item accordion
-    var _showAccordion = function(item) {
+    let _showAccordion = function(item) {
       if (
         KTEventHandler.trigger(the.element, "kt.menu.accordion.show", item) ===
         false
@@ -3177,8 +3365,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         return;
       }
 
-      var sub = _getItemSubElement(item);
-      var expand = the.options.accordion.expand;
+      let sub = _getItemSubElement(item);
+      let expand = the.options.accordion.expand;
 
       if (_getOptionFromElementAttribute(item, "expand") === true) {
         expand = true;
@@ -3212,7 +3400,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Hide item accordion
-    var _hideAccordion = function(item) {
+    let _hideAccordion = function(item) {
       if (
         KTEventHandler.trigger(the.element, "kt.menu.accordion.hide", item) ===
         false
@@ -3220,7 +3408,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         return;
       }
 
-      var sub = _getItemSubElement(item);
+      let sub = _getItemSubElement(item);
 
       KTUtil.addClass(item, "hiding");
 
@@ -3235,15 +3423,15 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var _setActiveLink = function(link) {
-      var item = _getItemElement(link);
-      var parentItems = _getItemParentElements(item);
-      var parentTabPane = link.closest(".tab-pane");
+    let _setActiveLink = function(link) {
+      let item = _getItemElement(link);
+      let parentItems = _getItemParentElements(item);
+      let parentTabPane = link.closest(".tab-pane");
 
-      var activeLinks = [].slice.call(
+      let activeLinks = [].slice.call(
         the.element.querySelectorAll(".menu-link.active")
       );
-      var activeParentItems = [].slice.call(
+      let activeParentItems = [].slice.call(
         the.element.querySelectorAll(".menu-item.here, .menu-item.show")
       );
 
@@ -3254,8 +3442,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
 
       if (parentItems && parentItems.length > 0) {
-        for (var i = 0, len = parentItems.length; i < len; i++) {
-          var parentItem = parentItems[i];
+        for (let i = 0, len = parentItems.length; i < len; i++) {
+          let parentItem = parentItems[i];
 
           if (_getItemSubType(parentItem) === "accordion") {
             _showAccordion(parentItem);
@@ -3278,10 +3466,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
       // Handle tab
       if (parentTabPane && Tab()) {
-        var tabEl = the.element.querySelector(
+        let tabEl = the.element.querySelector(
           '[data-bs-target="#' + parentTabPane.getAttribute("id") + '"]'
         );
-        var tab = new Tab(tabEl);
+        let tab = new Tab(tabEl);
 
         if (tab) {
           tab.show();
@@ -3291,8 +3479,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       link.classList.add("active");
     };
 
-    var _getLinkByAttribute = function(value, name = "href") {
-      var link = the.element.querySelector("a[" + name + '="' + value + '"]');
+    let _getLinkByAttribute = function(value, name = "href") {
+      let link = the.element.querySelector("a[" + name + '="' + value + '"]');
 
       if (link) {
         return link;
@@ -3302,15 +3490,15 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Hide all shown accordions of item
-    var _hideAccordions = function(item) {
-      var itemsToHide = KTUtil.findAll(
+    let _hideAccordions = function(item) {
+      let itemsToHide = KTUtil.findAll(
         the.element,
         ".show[data-kt-menu-trigger]"
       );
-      var itemToHide;
+      let itemToHide;
 
       if (itemsToHide && itemsToHide.length > 0) {
-        for (var i = 0, len = itemsToHide.length; i < len; i++) {
+        for (let i = 0, len = itemsToHide.length; i < len; i++) {
           itemToHide = itemsToHide[i];
 
           if (
@@ -3326,9 +3514,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get item option(through html attributes)
-    var _getOptionFromElementAttribute = function(item, name) {
-      var attr;
-      var value = null;
+    let _getOptionFromElementAttribute = function(item, name) {
+      let attr;
+      let value = null;
 
       if (item && item.hasAttribute("data-kt-menu-" + name)) {
         attr = item.getAttribute("data-kt-menu-" + name);
@@ -3344,7 +3532,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return value;
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("menu");
     };
 
@@ -3482,8 +3670,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
   // Get KTMenu instance by element
   KTMenu.getInstance = function(element) {
-    var menu;
-    var item;
+    let menu;
+    let item;
 
     if (!element) {
       return null;
@@ -3503,7 +3691,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
     // Element has a parent with DOM reference to .menu in it's DATA storage
     if (KTUtil.hasClass(element, "menu-link")) {
-      var sub = element.closest(".menu-sub");
+      let sub = element.closest(".menu-sub");
 
       if (KTUtil.data(sub).has("menu")) {
         return KTUtil.data(sub).get("menu");
@@ -3515,14 +3703,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
   // Hide all dropdowns and skip one if provided
   KTMenu.hideDropdowns = function(skip) {
-    var items = document.querySelectorAll(
+    let items = document.querySelectorAll(
       ".show.menu-dropdown[data-kt-menu-trigger]"
     );
 
     if (items && items.length > 0) {
-      for (var i = 0, len = items.length; i < len; i++) {
-        var item = items[i];
-        var menu = KTMenu.getInstance(item);
+      for (let i = 0, len = items.length; i < len; i++) {
+        let item = items[i];
+        let menu = KTMenu.getInstance(item);
 
         if (menu && menu.getItemSubType(item) === "dropdown") {
           if (skip) {
@@ -3543,13 +3731,13 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
   // Update all dropdowns popover instances
   KTMenu.updateDropdowns = function() {
-    var items = document.querySelectorAll(
+    let items = document.querySelectorAll(
       ".show.menu-dropdown[data-kt-menu-trigger]"
     );
 
     if (items && items.length > 0) {
-      for (var i = 0, len = items.length; i < len; i++) {
-        var item = items[i];
+      for (let i = 0, len = items.length; i < len; i++) {
+        let item = items[i];
 
         if (KTUtil.data(item).has("popper")) {
           KTUtil.data(item)
@@ -3564,16 +3752,16 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   KTMenu.initHandlers = function() {
     // Dropdown handler
     document.addEventListener("click", function(e) {
-      var items = document.querySelectorAll(
+      let items = document.querySelectorAll(
         '.show.menu-dropdown[data-kt-menu-trigger]:not([data-kt-menu-static="true"])'
       );
-      var menu;
-      var item;
-      var sub;
-      var menuObj;
+      let menu;
+      let item;
+      let sub;
+      let menuObj;
 
       if (items && items.length > 0) {
-        for (var i = 0, len = items.length; i < len; i++) {
+        for (let i = 0, len = items.length; i < len; i++) {
           item = items[i];
           menuObj = KTMenu.getInstance(item);
 
@@ -3601,7 +3789,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       '.menu-item[data-kt-menu-trigger] > .menu-link, [data-kt-menu-trigger]:not(.menu-item):not([data-kt-menu-trigger="auto"])',
       "click",
       function(e) {
-        var menu = KTMenu.getInstance(this);
+        let menu = KTMenu.getInstance(this);
 
         if (menu !== null) {
           return menu.click(this, e);
@@ -3615,7 +3803,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       ".menu-item:not([data-kt-menu-trigger]) > .menu-link",
       "click",
       function(e) {
-        var menu = KTMenu.getInstance(this);
+        let menu = KTMenu.getInstance(this);
 
         if (menu !== null) {
           return menu.link(this, e);
@@ -3627,7 +3815,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     KTUtil.on(document.body, '[data-kt-menu-dismiss="true"]', "click", function(
       e
     ) {
-      var menu = KTMenu.getInstance(this);
+      let menu = KTMenu.getInstance(this);
 
       if (menu !== null) {
         return menu.dismiss(this, e);
@@ -3640,7 +3828,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       "[data-kt-menu-trigger], .menu-sub",
       "mouseover",
       function(e) {
-        var menu = KTMenu.getInstance(this);
+        let menu = KTMenu.getInstance(this);
 
         if (menu !== null && menu.getItemSubType(this) === "dropdown") {
           return menu.mouseover(this, e);
@@ -3654,7 +3842,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       "[data-kt-menu-trigger], .menu-sub",
       "mouseout",
       function(e) {
-        var menu = KTMenu.getInstance(this);
+        let menu = KTMenu.getInstance(this);
 
         if (menu !== null && menu.getItemSubType(this) === "dropdown") {
           return menu.mouseout(this, e);
@@ -3664,17 +3852,17 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
     // Resize handler
     window.addEventListener("resize", function() {
-      var menu;
-      var timer;
+      let menu;
+      let timer;
 
       KTUtil.throttle(
         timer,
         function() {
           // Locate and update Offcanvas instances on window resize
-          var elements = document.querySelectorAll('[data-kt-menu="true"]');
+          let elements = document.querySelectorAll('[data-kt-menu="true"]');
 
           if (elements && elements.length > 0) {
-            for (var i = 0, len = elements.length; i < len; i++) {
+            for (let i = 0, len = elements.length; i < len; i++) {
               menu = KTMenu.getInstance(elements[i]);
               if (menu) {
                 menu.update();
@@ -3690,14 +3878,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Render menus by url
   KTMenu.updateByLinkAttribute = function(value, name = "href") {
     // Set menu link active state by attribute value
-    var elements = document.querySelectorAll('[data-kt-menu="true"]');
+    let elements = document.querySelectorAll('[data-kt-menu="true"]');
 
     if (elements && elements.length > 0) {
-      for (var i = 0, len = elements.length; i < len; i++) {
-        var menu = KTMenu.getInstance(elements[i]);
+      for (let i = 0, len = elements.length; i < len; i++) {
+        let menu = KTMenu.getInstance(elements[i]);
 
         if (menu) {
-          var link = menu.getLinkByAttribute(value, name);
+          let link = menu.getLinkByAttribute(value, name);
           if (link) {
             menu.setActiveLink(link);
           }
@@ -3709,9 +3897,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Global instances
   KTMenu.createInstances = function(selector = '[data-kt-menu="true"]') {
     // Initialize menus
-    var elements = document.querySelectorAll(selector);
+    let elements = document.querySelectorAll(selector);
     if (elements && elements.length > 0) {
-      for (var i = 0, len = elements.length; i < len; i++) {
+      for (let i = 0, len = elements.length; i < len; i++) {
         new KTMenu(elements[i]);
       }
     }
@@ -3738,18 +3926,18 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  var KTPasswordMeter = function(element, options) {
+  let KTPasswordMeter = function(element, options) {
     ////////////////////////////
     // ** Private variables  ** //
     ////////////////////////////
-    var the = this;
+    let the = this;
 
     if (!element) {
       return;
     }
 
     // Default Options
-    var defaultOptions = {
+    let defaultOptions = {
       minLength: 8,
       checkUppercase: true,
       checkLowercase: true,
@@ -3763,7 +3951,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     ////////////////////////////
 
     // Constructor
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("password-meter") === true) {
         the = KTUtil.data(element).get("password-meter");
       } else {
@@ -3772,7 +3960,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Initialize
-    var _init = function() {
+    let _init = function() {
       // Variables
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
       the.score = 0;
@@ -3799,7 +3987,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Handlers
-    var _handlers = function() {
+    let _handlers = function() {
       if (the.highlightElement) {
         the.inputElement.addEventListener("input", function() {
           _check();
@@ -3814,9 +4002,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Event handlers
-    var _check = function() {
-      var score = 0;
-      var checkScore = _getCheckScore();
+    let _check = function() {
+      let score = 0;
+      let checkScore = _getCheckScore();
 
       if (_checkLength() === true) {
         score = score + checkScore;
@@ -3843,30 +4031,30 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       _highlight();
     };
 
-    var _checkLength = function() {
+    let _checkLength = function() {
       return the.inputElement.value.length >= the.options.minLength; // 20 score
     };
 
-    var _checkLowercase = function() {
+    let _checkLowercase = function() {
       return /[a-z]/.test(the.inputElement.value); // 20 score
     };
 
-    var _checkUppercase = function() {
+    let _checkUppercase = function() {
       return /[A-Z]/.test(the.inputElement.value); // 20 score
     };
 
-    var _checkDigit = function() {
+    let _checkDigit = function() {
       return /[0-9]/.test(the.inputElement.value); // 20 score
     };
 
-    var _checkChar = function() {
+    let _checkChar = function() {
       return /[~`!#@$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/g.test(
         the.inputElement.value
       ); // 20 score
     };
 
-    var _getCheckScore = function() {
-      var count = 1;
+    let _getCheckScore = function() {
+      let count = 1;
 
       if (the.options.checkUppercase === true) {
         count++;
@@ -3889,12 +4077,12 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return 100 / the.checkSteps;
     };
 
-    var _highlight = function() {
-      var items = [].slice.call(the.highlightElement.querySelectorAll("div"));
-      var total = items.length;
-      var index = 0;
-      var checkScore = _getCheckScore();
-      var score = _getScore();
+    let _highlight = function() {
+      let items = [].slice.call(the.highlightElement.querySelectorAll("div"));
+      let total = items.length;
+      let index = 0;
+      let checkScore = _getCheckScore();
+      let score = _getScore();
 
       items.map(function(item) {
         index++;
@@ -3907,11 +4095,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var _visibility = function() {
-      var visibleIcon = the.visibilityElement.querySelector(
+    let _visibility = function() {
+      let visibleIcon = the.visibilityElement.querySelector(
         ":scope > i:not(.d-none)"
       );
-      var hiddenIcon = the.visibilityElement.querySelector(":scope > i.d-none");
+      let hiddenIcon = the.visibilityElement.querySelector(":scope > i.d-none");
 
       if (the.inputElement.getAttribute("type").toLowerCase() === "password") {
         the.inputElement.setAttribute("type", "text");
@@ -3925,18 +4113,18 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       the.inputElement.focus();
     };
 
-    var _reset = function() {
+    let _reset = function() {
       the.score = 0;
 
       _highlight();
     };
 
     // Gets current password score
-    var _getScore = function() {
+    let _getScore = function() {
       return the.score;
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("password-meter");
     };
 
@@ -3979,10 +4167,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     selector = "[data-kt-password-meter]"
   ) {
     // Get instances
-    var elements = document.body.querySelectorAll(selector);
+    let elements = document.body.querySelectorAll(selector);
 
     if (elements && elements.length > 0) {
-      for (var i = 0, len = elements.length; i < len; i++) {
+      for (let i = 0, len = elements.length; i < len; i++) {
         // Initialize instances
         new KTPasswordMeter(elements[i]);
       }
@@ -4000,21 +4188,21 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   }
 //("use strict");
 
-  var KTScrollHandlersInitialized = false;
+  let KTScrollHandlersInitialized = false;
 
   // Class definition
-  var KTScroll = function(element, options) {
+  let KTScroll = function(element, options) {
     ////////////////////////////
     // ** Private Variables  ** //
     ////////////////////////////
-    var the = this;
+    let the = this;
 
     if (!element) {
       return;
     }
 
     // Default options
-    var defaultOptions = {
+    let defaultOptions = {
       saveState: true,
     };
 
@@ -4022,7 +4210,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     // ** Private Methods  ** //
     ////////////////////////////
 
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("scroll")) {
         the = KTUtil.data(element).get("scroll");
       } else {
@@ -4030,7 +4218,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _init = function() {
+    let _init = function() {
       // Variables
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
 
@@ -4048,9 +4236,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.data(the.element).set("scroll", the);
     };
 
-    var _setupHeight = function() {
-      var heightType = _getHeightType();
-      var height = _getHeight();
+    let _setupHeight = function() {
+      let heightType = _getHeightType();
+      let height = _getHeight();
 
       // Set height
       if (height !== null && height.length > 0) {
@@ -4060,12 +4248,12 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _setupState = function() {
-      var namespace = _getStorageNamespace();
+    let _setupState = function() {
+      let namespace = _getStorageNamespace();
 
       if (_getOption("save-state") === true && the.id) {
         if (localStorage.getItem(namespace + the.id + "st")) {
-          var pos = parseInt(localStorage.getItem(namespace + the.id + "st"));
+          let pos = parseInt(localStorage.getItem(namespace + the.id + "st"));
 
           if (pos > 0) {
             the.element.scroll({
@@ -4077,13 +4265,13 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _getStorageNamespace = function(postfix) {
+    let _getStorageNamespace = function(postfix) {
       return document.body.hasAttribute("data-kt-name")
         ? document.body.getAttribute("data-kt-name") + "_"
         : "";
     };
 
-    var _setupScrollHandler = function() {
+    let _setupScrollHandler = function() {
       if (_getOption("save-state") === true && the.id) {
         the.element.addEventListener("scroll", _scrollHandler);
       } else {
@@ -4091,20 +4279,20 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _destroyScrollHandler = function() {
+    let _destroyScrollHandler = function() {
       the.element.removeEventListener("scroll", _scrollHandler);
     };
 
-    var _resetHeight = function() {
+    let _resetHeight = function() {
       KTUtil.css(the.element, _getHeightType(), "");
     };
 
-    var _scrollHandler = function() {
-      var namespace = _getStorageNamespace();
+    let _scrollHandler = function() {
+      let namespace = _getStorageNamespace();
       localStorage.setItem(namespace + the.id + "st", the.element.scrollTop);
     };
 
-    var _update = function() {
+    let _update = function() {
       // Activate/deactivate
       if (
         _getOption("activate") === true ||
@@ -4120,20 +4308,20 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _setupStretchHeight = function() {
-      var stretch = _getOption("stretch");
+    let _setupStretchHeight = function() {
+      let stretch = _getOption("stretch");
 
       // Stretch
       if (stretch !== null) {
-        var elements = document.querySelectorAll(stretch);
+        let elements = document.querySelectorAll(stretch);
 
         if (elements && elements.length == 2) {
-          var element1 = elements[0];
-          var element2 = elements[1];
-          var diff = _getElementHeight(element2) - _getElementHeight(element1);
+          let element1 = elements[0];
+          let element2 = elements[1];
+          let diff = _getElementHeight(element2) - _getElementHeight(element1);
 
           if (diff > 0) {
-            var height =
+            let height =
               parseInt(KTUtil.css(the.element, _getHeightType())) + diff;
 
             KTUtil.css(the.element, _getHeightType(), String(height) + "px");
@@ -4142,8 +4330,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _getHeight = function() {
-      var height = _getOption(_getHeightType());
+    let _getHeight = function() {
+      let height = _getOption(_getHeightType());
 
       if (height instanceof Function) {
         return height.call();
@@ -4158,11 +4346,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _getAutoHeight = function() {
-      var height = KTUtil.getViewPort().height;
-      var dependencies = _getOption("dependencies");
-      var wrappers = _getOption("wrappers");
-      var offset = _getOption("offset");
+    let _getAutoHeight = function() {
+      let height = KTUtil.getViewPort().height;
+      let dependencies = _getOption("dependencies");
+      let wrappers = _getOption("wrappers");
+      let offset = _getOption("offset");
 
       // Spacings
       height = height - _getElementSpacing(the.element);
@@ -4171,10 +4359,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       //console.log('Q:' + JSON.stringify(dependencies));
 
       if (dependencies !== null) {
-        var elements = document.querySelectorAll(dependencies);
+        let elements = document.querySelectorAll(dependencies);
 
         if (elements && elements.length > 0) {
-          for (var i = 0, len = elements.length; i < len; i++) {
+          for (let i = 0, len = elements.length; i < len; i++) {
             if (KTUtil.visible(elements[i]) === false) {
               continue;
             }
@@ -4186,9 +4374,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
       // Wrappers
       if (wrappers !== null) {
-        var elements = document.querySelectorAll(wrappers);
+        let elements = document.querySelectorAll(wrappers);
         if (elements && elements.length > 0) {
-          for (var i = 0, len = elements.length; i < len; i++) {
+          for (let i = 0, len = elements.length; i < len; i++) {
             if (KTUtil.visible(elements[i]) === false) {
               continue;
             }
@@ -4206,8 +4394,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return String(height) + "px";
     };
 
-    var _getElementHeight = function(element) {
-      var height = 0;
+    let _getElementHeight = function(element) {
+      let height = 0;
 
       if (element !== null) {
         height = height + parseInt(KTUtil.css(element, "height"));
@@ -4226,8 +4414,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return height;
     };
 
-    var _getElementSpacing = function(element) {
-      var spacing = 0;
+    let _getElementSpacing = function(element) {
+      let spacing = 0;
 
       if (element !== null) {
         spacing = spacing + parseInt(KTUtil.css(element, "margin-top"));
@@ -4247,11 +4435,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return spacing;
     };
 
-    var _getOption = function(name) {
+    let _getOption = function(name) {
       if (the.element.hasAttribute("data-kt-scroll-" + name) === true) {
-        var attr = the.element.getAttribute("data-kt-scroll-" + name);
+        let attr = the.element.getAttribute("data-kt-scroll-" + name);
 
-        var value = KTUtil.getResponsiveValue(attr);
+        let value = KTUtil.getResponsiveValue(attr);
 
         if (value !== null && String(value) === "true") {
           value = true;
@@ -4261,7 +4449,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
         return value;
       } else {
-        var optionName = KTUtil.snakeToCamel(name);
+        let optionName = KTUtil.snakeToCamel(name);
 
         if (the.options[optionName]) {
           return KTUtil.getResponsiveValue(the.options[optionName]);
@@ -4271,7 +4459,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _getHeightType = function() {
+    let _getHeightType = function() {
       if (_getOption("height")) {
         return "height";
       }
@@ -4283,7 +4471,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("scroll");
     };
 
@@ -4323,10 +4511,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Create instances
   KTScroll.createInstances = function(selector = '[data-kt-scroll="true"]') {
     // Initialize Menus
-    var elements = document.body.querySelectorAll(selector);
+    let elements = document.body.querySelectorAll(selector);
 
     if (elements && elements.length > 0) {
-      for (var i = 0, len = elements.length; i < len; i++) {
+      for (let i = 0, len = elements.length; i < len; i++) {
         new KTScroll(elements[i]);
       }
     }
@@ -4335,19 +4523,19 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Window resize handling
   KTScroll.handleResize = function() {
     window.addEventListener("resize", function() {
-      var timer;
+      let timer;
 
       KTUtil.throttle(
         timer,
         function() {
           // Locate and update Offcanvas instances on window resize
-          var elements = document.body.querySelectorAll(
+          let elements = document.body.querySelectorAll(
             '[data-kt-scroll="true"]'
           );
 
           if (elements && elements.length > 0) {
-            for (var i = 0, len = elements.length; i < len; i++) {
-              var scroll = KTScroll.getInstance(elements[i]);
+            for (let i = 0, len = elements.length; i < len; i++) {
+              let scroll = KTScroll.getInstance(elements[i]);
               if (scroll) {
                 scroll.update();
               }
@@ -4378,18 +4566,18 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  var KTScrolltop = function(element, options) {
+  let KTScrolltop = function(element, options) {
     ////////////////////////////
     // ** Private variables  ** //
     ////////////////////////////
-    var the = this;
+    let the = this;
 
     if (typeof element === "undefined" || element === null) {
       return;
     }
 
     // Default options
-    var defaultOptions = {
+    let defaultOptions = {
       offset: 300,
       speed: 600,
     };
@@ -4398,7 +4586,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     // ** Private methods  ** //
     ////////////////////////////
 
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("scrolltop")) {
         the = KTUtil.data(element).get("scrolltop");
       } else {
@@ -4406,7 +4594,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _init = function() {
+    let _init = function() {
       // Variables
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
       the.uid = KTUtil.getUniqueId("scrolltop");
@@ -4422,8 +4610,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.data(the.element).set("scrolltop", the);
     };
 
-    var _handlers = function() {
-      var timer;
+    let _handlers = function() {
+      let timer;
 
       window.addEventListener("scroll", function() {
         KTUtil.throttle(
@@ -4442,10 +4630,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var _scroll = function() {
-      var offset = parseInt(_getOption("offset"));
+    let _scroll = function() {
+      let offset = parseInt(_getOption("offset"));
 
-      var pos = KTUtil.getScrollTop(); // current vertical position
+      let pos = KTUtil.getScrollTop(); // current vertical position
 
       if (pos > offset) {
         if (document.body.hasAttribute("data-kt-scrolltop") === false) {
@@ -4458,17 +4646,17 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _go = function() {
-      var speed = parseInt(_getOption("speed"));
+    let _go = function() {
+      let speed = parseInt(_getOption("speed"));
 
       window.scrollTo({ top: 0, behavior: "smooth" });
       //KTUtil.scrollTop(0, speed);
     };
 
-    var _getOption = function(name) {
+    let _getOption = function(name) {
       if (the.element.hasAttribute("data-kt-scrolltop-" + name) === true) {
-        var attr = the.element.getAttribute("data-kt-scrolltop-" + name);
-        var value = KTUtil.getResponsiveValue(attr);
+        let attr = the.element.getAttribute("data-kt-scrolltop-" + name);
+        let value = KTUtil.getResponsiveValue(attr);
 
         if (value !== null && String(value) === "true") {
           value = true;
@@ -4478,7 +4666,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
         return value;
       } else {
-        var optionName = KTUtil.snakeToCamel(name);
+        let optionName = KTUtil.snakeToCamel(name);
 
         if (the.options[optionName]) {
           return KTUtil.getResponsiveValue(the.options[optionName]);
@@ -4488,7 +4676,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("scrolltop");
     };
 
@@ -4527,10 +4715,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     selector = '[data-kt-scrolltop="true"]'
   ) {
     // Initialize Menus
-    var elements = document.body.querySelectorAll(selector);
+    let elements = document.body.querySelectorAll(selector);
 
     if (elements && elements.length > 0) {
-      for (var i = 0, len = elements.length; i < len; i++) {
+      for (let i = 0, len = elements.length; i < len; i++) {
         new KTScrolltop(elements[i]);
       }
     }
@@ -4549,18 +4737,18 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  var KTSearch = function(element, options) {
+  let KTSearch = function(element, options) {
     ////////////////////////////
     // ** Private variables  ** //
     ////////////////////////////
-    var the = this;
+    let the = this;
 
     if (!element) {
       return;
     }
 
     // Default Options
-    var defaultOptions = {
+    let defaultOptions = {
       minLength: 2, // Miniam text lenght to query search
       keypress: true, // Enable search on keypress
       enter: true, // Enable search on enter key press
@@ -4574,7 +4762,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     ////////////////////////////
 
     // Construct
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("search") === true) {
         the = KTUtil.data(element).get("search");
       } else {
@@ -4583,7 +4771,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Init
-    var _init = function() {
+    let _init = function() {
       // Variables
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
       the.processing = false;
@@ -4627,7 +4815,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Handlera
-    var _handlers = function() {
+    let _handlers = function() {
       // Focus
       the.inputElement.addEventListener("focus", _focus);
 
@@ -4682,7 +4870,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
       // Window resize handling
       window.addEventListener("resize", function() {
-        var timer;
+        let timer;
 
         KTUtil.throttle(
           timer,
@@ -4695,7 +4883,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Focus
-    var _focus = function() {
+    let _focus = function() {
       the.element.classList.add("focus");
 
       if (
@@ -4707,13 +4895,13 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Blur
-    var _blur = function() {
+    let _blur = function() {
       the.element.classList.remove("focus");
     };
 
     // Enter
-    var _enter = function(e) {
-      var key = e.charCode || e.keyCode || 0;
+    let _enter = function(e) {
+      let key = e.charCode || e.keyCode || 0;
 
       if (key == 13) {
         e.preventDefault();
@@ -4723,9 +4911,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Input
-    var _input = function() {
+    let _input = function() {
       if (_getOption("min-length")) {
-        var minLength = parseInt(_getOption("min-length"));
+        let minLength = parseInt(_getOption("min-length"));
 
         if (the.inputElement.value.length >= minLength) {
           _search();
@@ -4736,7 +4924,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Search
-    var _search = function() {
+    let _search = function() {
       if (the.processing === false) {
         // Show search spinner
         if (the.spinnerElement) {
@@ -4765,7 +4953,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Complete
-    var _complete = function() {
+    let _complete = function() {
       if (the.spinnerElement) {
         the.spinnerElement.classList.add("d-none");
       }
@@ -4788,7 +4976,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Clear
-    var _clear = function() {
+    let _clear = function() {
       if (
         KTEventHandler.trigger(the.element, "kt.search.clear", the) === false
       ) {
@@ -4818,10 +5006,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Update
-    var _update = function() {
+    let _update = function() {
       // Handle responsive form
       if (the.layout === "menu") {
-        var responsiveFormMode = _getResponsiveFormMode();
+        let responsiveFormMode = _getResponsiveFormMode();
 
         if (
           responsiveFormMode === "on" &&
@@ -4840,7 +5028,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Show menu
-    var _show = function() {
+    let _show = function() {
       if (the.menuObject) {
         _update();
 
@@ -4849,7 +5037,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Hide menu
-    var _hide = function() {
+    let _hide = function() {
       if (the.menuObject) {
         _update();
 
@@ -4858,10 +5046,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get option
-    var _getOption = function(name) {
+    let _getOption = function(name) {
       if (the.element.hasAttribute("data-kt-search-" + name) === true) {
-        var attr = the.element.getAttribute("data-kt-search-" + name);
-        var value = KTUtil.getResponsiveValue(attr);
+        let attr = the.element.getAttribute("data-kt-search-" + name);
+        let value = KTUtil.getResponsiveValue(attr);
 
         if (value !== null && String(value) === "true") {
           value = true;
@@ -4871,7 +5059,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
         return value;
       } else {
-        var optionName = KTUtil.snakeToCamel(name);
+        let optionName = KTUtil.snakeToCamel(name);
 
         if (the.options[optionName]) {
           return KTUtil.getResponsiveValue(the.options[optionName]);
@@ -4882,22 +5070,22 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Get element
-    var _getElement = function(name) {
+    let _getElement = function(name) {
       return the.element.querySelector(
         '[data-kt-search-element="' + name + '"]'
       );
     };
 
     // Check if responsive form mode is enabled
-    var _getResponsiveFormMode = function() {
-      var responsive = _getOption("responsive");
-      var width = KTUtil.getViewPort().width;
+    let _getResponsiveFormMode = function() {
+      let responsive = _getOption("responsive");
+      let width = KTUtil.getViewPort().width;
 
       if (!responsive) {
         return null;
       }
 
-      var breakpoint = KTUtil.getBreakpoint(responsive);
+      let breakpoint = KTUtil.getBreakpoint(responsive);
 
       if (!breakpoint) {
         breakpoint = parseInt(responsive);
@@ -4910,7 +5098,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("search");
     };
 
@@ -5009,18 +5197,18 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  var KTStepper = function(element, options) {
+  let KTStepper = function(element, options) {
     //////////////////////////////
     // ** Private variables  ** //
     //////////////////////////////
-    var the = this;
+    let the = this;
 
     if (typeof element === "undefined" || element === null) {
       return;
     }
 
     // Default Options
-    var defaultOptions = {
+    let defaultOptions = {
       startIndex: 1,
       animation: false,
       animationSpeed: "0.3s",
@@ -5034,7 +5222,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     // ** Private methods  ** //
     ////////////////////////////
 
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("stepper") === true) {
         the = KTUtil.data(element).get("stepper");
       } else {
@@ -5042,7 +5230,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _init = function() {
+    let _init = function() {
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
       the.uid = KTUtil.getUniqueId("stepper");
 
@@ -5094,7 +5282,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         e.preventDefault();
 
         if (the.steps && the.steps.length > 0) {
-          for (var i = 0, len = the.steps.length; i < len; i++) {
+          for (let i = 0, len = the.steps.length; i < len; i++) {
             if (the.steps[i] === this) {
               the.clickedStepIndex = i + 1;
 
@@ -5122,7 +5310,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.data(the.element).set("stepper", the);
     };
 
-    var _goTo = function(index) {
+    let _goTo = function(index) {
       // Trigger "change" event
       KTEventHandler.trigger(the.element, "kt.stepper.change", the);
 
@@ -5151,24 +5339,24 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return the;
     };
 
-    var _goNext = function() {
+    let _goNext = function() {
       return _goTo(_getNextStepIndex());
     };
 
-    var _goPrevious = function() {
+    let _goPrevious = function() {
       return _goTo(_getPreviousStepIndex());
     };
 
-    var _goLast = function() {
+    let _goLast = function() {
       return _goTo(_getLastStepIndex());
     };
 
-    var _goFirst = function() {
+    let _goFirst = function() {
       return _goTo(_getFirstStepIndex());
     };
 
-    var _refreshUI = function() {
-      var state = "";
+    let _refreshUI = function() {
+      let state = "";
 
       if (_isLastStep()) {
         state = "last";
@@ -5186,15 +5374,15 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.addClass(the.element, state);
 
       // Step Items
-      var elements = KTUtil.findAll(
+      let elements = KTUtil.findAll(
         the.element,
         '[data-kt-stepper-element="nav"], [data-kt-stepper-element="content"], [data-kt-stepper-element="info"]'
       );
 
       if (elements && elements.length > 0) {
-        for (var i = 0, len = elements.length; i < len; i++) {
-          var element = elements[i];
-          var index = KTUtil.index(element) + 1;
+        for (let i = 0, len = elements.length; i < len; i++) {
+          let element = elements[i];
+          let index = KTUtil.index(element) + 1;
 
           KTUtil.removeClass(element, "current");
           KTUtil.removeClass(element, "completed");
@@ -5213,7 +5401,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
                 the.options.animationSpeed
               );
 
-              var animation =
+              let animation =
                 _getStepDirection(the.passedStepIndex) === "previous"
                   ? the.options.animationPreviousClass
                   : the.options.animationNextClass;
@@ -5230,19 +5418,19 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _isLastStep = function() {
+    let _isLastStep = function() {
       return the.currentStepIndex === the.totalStepsNumber;
     };
 
-    var _isFirstStep = function() {
+    let _isFirstStep = function() {
       return the.currentStepIndex === 1;
     };
 
-    var _isBetweenStep = function() {
+    let _isBetweenStep = function() {
       return _isLastStep() === false && _isFirstStep() === false;
     };
 
-    var _getNextStepIndex = function() {
+    let _getNextStepIndex = function() {
       if (the.totalStepsNumber >= the.currentStepIndex + 1) {
         return the.currentStepIndex + 1;
       } else {
@@ -5250,7 +5438,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _getPreviousStepIndex = function() {
+    let _getPreviousStepIndex = function() {
       if (the.currentStepIndex - 1 > 1) {
         return the.currentStepIndex - 1;
       } else {
@@ -5258,19 +5446,19 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _getFirstStepIndex = function() {
+    let _getFirstStepIndex = function() {
       return 1;
     };
 
-    var _getLastStepIndex = function() {
+    let _getLastStepIndex = function() {
       return the.totalStepsNumber;
     };
 
-    var _getTotalStepsNumber = function() {
+    let _getTotalStepsNumber = function() {
       return the.totalStepsNumber;
     };
 
-    var _getStepDirection = function(index) {
+    let _getStepDirection = function(index) {
       if (index > the.currentStepIndex) {
         return "next";
       } else {
@@ -5278,8 +5466,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _getStepContent = function(index) {
-      var content = KTUtil.findAll(
+    let _getStepContent = function(index) {
+      let content = KTUtil.findAll(
         the.element,
         '[data-kt-stepper-element="content"]'
       );
@@ -5291,7 +5479,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       // Event Handlers
       KTUtil.removeEvent(the.btnNext, "click", the.nextListener);
 
@@ -5392,21 +5580,21 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
 //("use strict");
 
-  var KTStickyHandlersInitialized = false;
+  let KTStickyHandlersInitialized = false;
 
   // Class definition
-  var KTSticky = function(element, options) {
+  let KTSticky = function(element, options) {
     ////////////////////////////
     // ** Private Variables  ** //
     ////////////////////////////
-    var the = this;
+    let the = this;
 
     if (typeof element === "undefined" || element === null) {
       return;
     }
 
     // Default Options
-    var defaultOptions = {
+    let defaultOptions = {
       offset: 200,
       reverse: false,
       release: null,
@@ -5418,7 +5606,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     // ** Private Methods  ** //
     ////////////////////////////
 
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("sticky") === true) {
         the = KTUtil.data(element).get("sticky");
       } else {
@@ -5426,7 +5614,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _init = function() {
+    let _init = function() {
       the.element = element;
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
       the.uid = KTUtil.getUniqueId("sticky");
@@ -5450,13 +5638,13 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.data(the.element).set("sticky", the);
     };
 
-    var _scroll = function(e) {
-      var offset = _getOption("offset");
-      var release = _getOption("release");
-      var reverse = _getOption("reverse");
-      var st;
-      var attrName;
-      var diff;
+    let _scroll = function(e) {
+      let offset = _getOption("offset");
+      let release = _getOption("release");
+      let reverse = _getOption("reverse");
+      let st;
+      let attrName;
+      let diff;
 
       // Exit if false
       if (offset === false) {
@@ -5472,7 +5660,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         window.innerHeight -
         KTUtil.getScrollTop();
 
-      var proceed = !release || release.offsetTop - release.clientHeight > st;
+      let proceed = !release || release.offsetTop - release.clientHeight > st;
 
       if (reverse === true) {
         // Release on reverse scroll mode
@@ -5554,19 +5742,19 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _enable = function(update) {
-      var top = _getOption("top");
+    let _enable = function(update) {
+      let top = _getOption("top");
       top = top ? parseInt(top) : 0;
 
-      var left = _getOption("left");
-      var right = _getOption("right");
-      var width = _getOption("width");
-      var zindex = _getOption("zindex");
-      var dependencies = _getOption("dependencies");
-      var classes = _getOption("class");
+      let left = _getOption("left");
+      let right = _getOption("right");
+      let width = _getOption("width");
+      let zindex = _getOption("zindex");
+      let dependencies = _getOption("dependencies");
+      let classes = _getOption("class");
 
-      var height = _calculateHeight();
-      var heightOffset = _getOption("height-offset");
+      let height = _calculateHeight();
+      let heightOffset = _getOption("height-offset");
       heightOffset = heightOffset ? parseInt(heightOffset) : 0;
 
       if (height + heightOffset + top > KTUtil.getViewPort().height) {
@@ -5600,7 +5788,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
       if (width !== null) {
         if (width["target"]) {
-          var targetElement = document.querySelector(width["target"]);
+          let targetElement = document.querySelector(width["target"]);
           if (targetElement) {
             width = KTUtil.css(targetElement, "width");
           }
@@ -5611,7 +5799,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
       if (left !== null) {
         if (String(left).toLowerCase() === "auto") {
-          var offsetLeft = KTUtil.offset(the.element).left;
+          let offsetLeft = KTUtil.offset(the.element).left;
 
           if (offsetLeft >= 0) {
             KTUtil.css(the.element, "left", String(offsetLeft) + "px");
@@ -5627,10 +5815,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
       // Height dependencies
       if (dependencies !== null) {
-        var dependencyElements = document.querySelectorAll(dependencies);
+        let dependencyElements = document.querySelectorAll(dependencies);
 
         if (dependencyElements && dependencyElements.length > 0) {
-          for (var i = 0, len = dependencyElements.length; i < len; i++) {
+          for (let i = 0, len = dependencyElements.length; i < len; i++) {
             KTUtil.css(
               dependencyElements[i],
               "padding-top",
@@ -5641,7 +5829,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _disable = function() {
+    let _disable = function() {
       KTUtil.css(the.element, "top", "");
       KTUtil.css(the.element, "width", "");
       KTUtil.css(the.element, "left", "");
@@ -5649,8 +5837,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.css(the.element, "z-index", "");
       KTUtil.css(the.element, "position", "");
 
-      var dependencies = _getOption("dependencies");
-      var classes = _getOption("class");
+      let dependencies = _getOption("dependencies");
+      let classes = _getOption("class");
 
       if (classes !== null) {
         KTUtil.removeClass(the.element, classes);
@@ -5658,20 +5846,20 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
       // Height dependencies
       if (dependencies !== null) {
-        var dependencyElements = document.querySelectorAll(dependencies);
+        let dependencyElements = document.querySelectorAll(dependencies);
 
         if (dependencyElements && dependencyElements.length > 0) {
-          for (var i = 0, len = dependencyElements.length; i < len; i++) {
+          for (let i = 0, len = dependencyElements.length; i < len; i++) {
             KTUtil.css(dependencyElements[i], "padding-top", "");
           }
         }
       }
     };
 
-    var _check = function() {};
+    let _check = function() {};
 
-    var _calculateHeight = function() {
-      var height = parseFloat(KTUtil.css(the.element, "height"));
+    let _calculateHeight = function() {
+      let height = parseFloat(KTUtil.css(the.element, "height"));
 
       height = height + parseFloat(KTUtil.css(the.element, "margin-top"));
       height = height + parseFloat(KTUtil.css(the.element, "margin-bottom"));
@@ -5687,10 +5875,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return height;
     };
 
-    var _getOption = function(name) {
+    let _getOption = function(name) {
       if (the.element.hasAttribute("data-kt-sticky-" + name) === true) {
-        var attr = the.element.getAttribute("data-kt-sticky-" + name);
-        var value = KTUtil.getResponsiveValue(attr);
+        let attr = the.element.getAttribute("data-kt-sticky-" + name);
+        let value = KTUtil.getResponsiveValue(attr);
 
         if (value !== null && String(value) === "true") {
           value = true;
@@ -5700,7 +5888,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
         return value;
       } else {
-        var optionName = KTUtil.snakeToCamel(name);
+        let optionName = KTUtil.snakeToCamel(name);
 
         if (the.options[optionName]) {
           return KTUtil.getResponsiveValue(the.options[optionName]);
@@ -5710,7 +5898,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       window.removeEventListener("scroll", _scroll);
       KTUtil.data(the.element).remove("sticky");
     };
@@ -5768,11 +5956,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Create instances
   KTSticky.createInstances = function(selector = '[data-kt-sticky="true"]') {
     // Initialize Menus
-    var elements = document.body.querySelectorAll(selector);
-    var sticky;
+    let elements = document.body.querySelectorAll(selector);
+    let sticky;
 
     if (elements && elements.length > 0) {
-      for (var i = 0, len = elements.length; i < len; i++) {
+      for (let i = 0, len = elements.length; i < len; i++) {
         sticky = new KTSticky(elements[i]);
       }
     }
@@ -5781,19 +5969,19 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Window resize handler
   KTSticky.handleResize = function() {
     window.addEventListener("resize", function() {
-      var timer;
+      let timer;
 
       KTUtil.throttle(
         timer,
         function() {
           // Locate and update Offcanvas instances on window resize
-          var elements = document.body.querySelectorAll(
+          let elements = document.body.querySelectorAll(
             '[data-kt-sticky="true"]'
           );
 
           if (elements && elements.length > 0) {
-            for (var i = 0, len = elements.length; i < len; i++) {
-              var sticky = KTSticky.getInstance(elements[i]);
+            for (let i = 0, len = elements.length; i < len; i++) {
+              let sticky = KTSticky.getInstance(elements[i]);
               if (sticky) {
                 sticky.update();
               }
@@ -5822,21 +6010,21 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
 //("use strict");
 
-  var KTSwapperHandlersInitialized = false;
+  let KTSwapperHandlersInitialized = false;
 
   // Class definition
-  var KTSwapper = function(element, options) {
+  let KTSwapper = function(element, options) {
     ////////////////////////////
     // ** Private Variables  ** //
     ////////////////////////////
-    var the = this;
+    let the = this;
 
     if (typeof element === "undefined" || element === null) {
       return;
     }
 
     // Default Options
-    var defaultOptions = {
+    let defaultOptions = {
       mode: "append",
     };
 
@@ -5844,7 +6032,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     // ** Private Methods  ** //
     ////////////////////////////
 
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("swapper") === true) {
         the = KTUtil.data(element).get("swapper");
       } else {
@@ -5852,7 +6040,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _init = function() {
+    let _init = function() {
       the.element = element;
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
 
@@ -5866,11 +6054,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.data(the.element).set("swapper", the);
     };
 
-    var _update = function(e) {
-      var parentSelector = _getOption("parent");
+    let _update = function(e) {
+      let parentSelector = _getOption("parent");
 
-      var mode = _getOption("mode");
-      var parentElement = parentSelector
+      let mode = _getOption("mode");
+      let parentElement = parentSelector
         ? document.querySelector(parentSelector)
         : null;
 
@@ -5883,10 +6071,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _getOption = function(name) {
+    let _getOption = function(name) {
       if (the.element.hasAttribute("data-kt-swapper-" + name) === true) {
-        var attr = the.element.getAttribute("data-kt-swapper-" + name);
-        var value = KTUtil.getResponsiveValue(attr);
+        let attr = the.element.getAttribute("data-kt-swapper-" + name);
+        let value = KTUtil.getResponsiveValue(attr);
 
         if (value !== null && String(value) === "true") {
           value = true;
@@ -5896,7 +6084,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
         return value;
       } else {
-        var optionName = KTUtil.snakeToCamel(name);
+        let optionName = KTUtil.snakeToCamel(name);
 
         if (the.options[optionName]) {
           return KTUtil.getResponsiveValue(the.options[optionName]);
@@ -5906,7 +6094,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("swapper");
     };
 
@@ -5956,11 +6144,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Create instances
   KTSwapper.createInstances = function(selector = '[data-kt-swapper="true"]') {
     // Initialize Menus
-    var elements = document.querySelectorAll(selector);
-    var swapper;
+    let elements = document.querySelectorAll(selector);
+    let swapper;
 
     if (elements && elements.length > 0) {
-      for (var i = 0, len = elements.length; i < len; i++) {
+      for (let i = 0, len = elements.length; i < len; i++) {
         swapper = new KTSwapper(elements[i]);
       }
     }
@@ -5969,17 +6157,17 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Window resize handler
   KTSwapper.handleResize = function() {
     window.addEventListener("resize", function() {
-      var timer;
+      let timer;
 
       KTUtil.throttle(
         timer,
         function() {
           // Locate and update Offcanvas instances on window resize
-          var elements = document.querySelectorAll('[data-kt-swapper="true"]');
+          let elements = document.querySelectorAll('[data-kt-swapper="true"]');
 
           if (elements && elements.length > 0) {
-            for (var i = 0, len = elements.length; i < len; i++) {
-              var swapper = KTSwapper.getInstance(elements[i]);
+            for (let i = 0, len = elements.length; i < len; i++) {
+              let swapper = KTSwapper.getInstance(elements[i]);
               if (swapper) {
                 swapper.update();
               }
@@ -6009,18 +6197,18 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  var KTToggle = function(element, options) {
+  let KTToggle = function(element, options) {
     ////////////////////////////
     // ** Private variables  ** //
     ////////////////////////////
-    var the = this;
+    let the = this;
 
     if (!element) {
       return;
     }
 
     // Default Options
-    var defaultOptions = {
+    let defaultOptions = {
       saveState: true,
     };
 
@@ -6028,7 +6216,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     // ** Private methods  ** //
     ////////////////////////////
 
-    var _construct = function() {
+    let _construct = function() {
       if (KTUtil.data(element).has("toggle") === true) {
         the = KTUtil.data(element).get("toggle");
       } else {
@@ -6036,7 +6224,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var _init = function() {
+    let _init = function() {
       // Variables
       the.options = KTUtil.deepExtend({}, defaultOptions, options);
       the.uid = KTUtil.getUniqueId("toggle");
@@ -6067,7 +6255,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       KTUtil.data(the.element).set("toggle", the);
     };
 
-    var _handlers = function() {
+    let _handlers = function() {
       KTUtil.addEvent(the.element, "click", function(e) {
         e.preventDefault();
 
@@ -6084,7 +6272,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Event handlers
-    var _toggle = function() {
+    let _toggle = function() {
       // Trigger "after.toggle" event
       KTEventHandler.trigger(the.element, "kt.toggle.change", the);
 
@@ -6100,7 +6288,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return the;
     };
 
-    var _enable = function() {
+    let _enable = function() {
       if (_isEnabled() === true) {
         return;
       }
@@ -6122,7 +6310,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return the;
     };
 
-    var _disable = function() {
+    let _disable = function() {
       if (_isEnabled() === false) {
         return;
       }
@@ -6144,13 +6332,13 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       return the;
     };
 
-    var _isEnabled = function() {
+    let _isEnabled = function() {
       return (
         String(the.target.getAttribute(the.attribute)).toLowerCase() === "on"
       );
     };
 
-    var _destroy = function() {
+    let _destroy = function() {
       KTUtil.data(the.element).remove("toggle");
     };
 
@@ -6216,10 +6404,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Create instances
   KTToggle.createInstances = function(selector = "[data-kt-toggle]") {
     // Get instances
-    var elements = document.body.querySelectorAll(selector);
+    let elements = document.body.querySelectorAll(selector);
 
     if (elements && elements.length > 0) {
-      for (var i = 0, len = elements.length; i < len; i++) {
+      for (let i = 0, len = elements.length; i < len; i++) {
         // Initialize instances
         new KTToggle(elements[i]);
       }
@@ -6246,7 +6434,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Element.matches() polyfill
   if (!Element.prototype.matches) {
     Element.prototype.matches = function(s) {
-      var matches = (this.document || this.ownerDocument).querySelectorAll(s),
+      let matches = (this.document || this.ownerDocument).querySelectorAll(s),
         i = matches.length;
       while (--i >= 0 && matches.item(i) !== this) {}
       return i > -1;
@@ -6259,8 +6447,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
    */
   if (!Element.prototype.closest) {
     Element.prototype.closest = function(s) {
-      var el = this;
-      var ancestor = this;
+      let el = this;
+      let ancestor = this;
       if (!document.documentElement.contains(el)) return null;
       do {
         if (ancestor.matches(s)) return ancestor;
@@ -6277,7 +6465,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
    * @license MIT
    */
   (function(elem) {
-    for (var i = 0; i < elem.length; i++) {
+    for (let i = 0; i < elem.length; i++) {
       if (!window[elem[i]] || "remove" in window[elem[i]].prototype) continue;
       window[elem[i]].prototype.remove = function() {
         this.parentNode.removeChild(this);
@@ -6295,9 +6483,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   //  MIT license
   //
   (function() {
-    var lastTime = 0;
-    var vendors = ["webkit", "moz"];
-    for (var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+    let lastTime = 0;
+    let vendors = ["webkit", "moz"];
+    for (let x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
       window.requestAnimationFrame =
         window[vendors[x] + "RequestAnimationFrame"];
       window.cancelAnimationFrame =
@@ -6307,9 +6495,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
     if (!window.requestAnimationFrame)
       window.requestAnimationFrame = function(callback) {
-        var currTime = new Date().getTime();
-        var timeToCall = Math.max(0, 16 - (currTime - lastTime));
-        var id = window.setTimeout(function() {
+        let currTime = new Date().getTime();
+        let timeToCall = Math.max(0, 16 - (currTime - lastTime));
+        let id = window.setTimeout(function() {
           callback(currTime + timeToCall);
         }, timeToCall);
         lastTime = currTime + timeToCall;
@@ -6333,11 +6521,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         enumerable: true,
         writable: true,
         value: function prepend() {
-          var argArr = Array.prototype.slice.call(arguments),
+          let argArr = Array.prototype.slice.call(arguments),
             docFrag = document.createDocumentFragment();
 
           argArr.forEach(function(argItem) {
-            var isNode = argItem instanceof Node;
+            let isNode = argItem instanceof Node;
             docFrag.appendChild(
               isNode ? argItem : document.createTextNode(String(argItem))
             );
@@ -6352,10 +6540,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // getAttributeNames
   if (Element.prototype.getAttributeNames == undefined) {
     Element.prototype.getAttributeNames = function() {
-      var attributes = this.attributes;
-      var length = attributes.length;
-      var result = new Array(length);
-      for (var i = 0; i < length; i++) {
+      let attributes = this.attributes;
+      let length = attributes.length;
+      let result = new Array(length);
+      for (let i = 0; i < length; i++) {
         result[i] = attributes[i].name;
       }
       return result;
@@ -6367,30 +6555,30 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   window.KTUtilElementDataStoreID = 0;
   window.KTUtilDelegatedEventHandlers = {};
 
-  var KTUtil = (function() {
-    var resizeHandlers = [];
+  let KTUtil = (function() {
+    let resizeHandlers = [];
 
     /**
      * Handle window resize event with some
      * delay to attach event handlers upon resize complete
      */
-    var _runResizeHandlers = function() {
+    let _runResizeHandlers = function() {
       // reinitialize other subscribed elements
-      for (var i = 0; i < resizeHandlers.length; i++) {
-        var each = resizeHandlers[i];
+      for (let i = 0; i < resizeHandlers.length; i++) {
+        let each = resizeHandlers[i];
         each.call();
       }
     };
-    var _windowResizeHandler = function() {
-      var _runResizeHandlers = function() {
+    let _windowResizeHandler = function() {
+      let _runResizeHandlers = function() {
         // reinitialize other subscribed elements
-        for (var i = 0; i < resizeHandlers.length; i++) {
-          var each = resizeHandlers[i];
+        for (let i = 0; i < resizeHandlers.length; i++) {
+          let each = resizeHandlers[i];
           each.call();
         }
       };
 
-      var timer;
+      let timer;
 
       window.addEventListener("resize", function() {
         KTUtil.throttle(
@@ -6427,7 +6615,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
        * @param {function} callback function.
        */
       removeResizeHandler: function(callback) {
-        for (var i = 0; i < resizeHandlers.length; i++) {
+        for (let i = 0; i < resizeHandlers.length; i++) {
           if (callback === resizeHandlers[i]) {
             delete resizeHandlers[i];
           }
@@ -6449,7 +6637,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         } else {
           // for IE and other old browsers
           // causes deprecation warning on modern browsers
-          var evt = window.document.createEvent("UIEvents");
+          let evt = window.document.createEvent("UIEvents");
           evt.initUIEvent("resize", true, false, window, 0);
           window.dispatchEvent(evt);
         }
@@ -6461,7 +6649,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
        * @returns {string}
        */
       getURLParam: function(paramName) {
-        var searchString = window.location.search.substring(1),
+        let searchString = window.location.search.substring(1),
           i,
           val,
           params = searchString.split("&");
@@ -6481,7 +6669,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
        * @returns {boolean}
        */
       isMobileDevice: function() {
-        var test =
+        let test =
           this.getViewPort().width < this.getBreakpoint("lg") ? true : false;
 
         if (test === false) {
@@ -6506,7 +6694,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
        * @returns {object}
        */
       getViewPort: function() {
-        var e = window,
+        let e = window,
           a = "inner";
         if (!("innerWidth" in window)) {
           a = "client";
@@ -6526,15 +6714,15 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
        * @returns {boolean}
        */
       isBreakpointUp: function(mode) {
-        var width = this.getViewPort().width;
-        var breakpoint = this.getBreakpoint(mode);
+        let width = this.getViewPort().width;
+        let breakpoint = this.getBreakpoint(mode);
 
         return width >= breakpoint;
       },
 
       isBreakpointDown: function(mode) {
-        var width = this.getViewPort().width;
-        var breakpoint = this.getBreakpoint(mode);
+        let width = this.getViewPort().width;
+        let breakpoint = this.getBreakpoint(mode);
 
         return width < breakpoint;
       },
@@ -6558,7 +6746,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
        * @returns {number}
        */
       getBreakpoint: function(breakpoint) {
-        var value = this.getCssVariableValue("--bs-" + breakpoint);
+        let value = this.getCssVariableValue("--bs-" + breakpoint);
 
         if (value) {
           value = parseInt(value.trim());
@@ -6574,7 +6762,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
        * @returns {object}
        */
       isset: function(obj, keys) {
-        var stone;
+        let stone;
 
         keys = keys || "";
 
@@ -6607,7 +6795,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
        * @returns {number}
        */
       getHighestZindex: function(el) {
-        var position, value;
+        let position, value;
 
         while (el && el !== document) {
           // Ignore z-index if position is set to a value where z-index is ignored by the browser
@@ -6643,7 +6831,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
        * @returns {boolean}
        */
       hasFixedPositionedParent: function(el) {
-        var position;
+        let position;
 
         while (el && el !== document) {
           position = KTUtil.css(el, "position");
@@ -6662,8 +6850,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
        * Simulates delay
        */
       sleep: function(milliseconds) {
-        var start = new Date().getTime();
-        for (var i = 0; i < 1e7; i++) {
+        let start = new Date().getTime();
+        for (let i = 0; i < 1e7; i++) {
           if (new Date().getTime() - start > milliseconds) {
             break;
           }
@@ -6692,11 +6880,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       deepExtend: function(out) {
         out = out || {};
 
-        for (var i = 1; i < arguments.length; i++) {
-          var obj = arguments[i];
+        for (let i = 1; i < arguments.length; i++) {
+          let obj = arguments[i];
           if (!obj) continue;
 
-          for (var key in obj) {
+          for (let key in obj) {
             if (!obj.hasOwnProperty(key)) {
               continue;
             }
@@ -6720,10 +6908,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       extend: function(out) {
         out = out || {};
 
-        for (var i = 1; i < arguments.length; i++) {
+        for (let i = 1; i < arguments.length; i++) {
           if (!arguments[i]) continue;
 
-          for (var key in arguments[i]) {
+          for (let key in arguments[i]) {
             if (arguments[i].hasOwnProperty(key)) out[key] = arguments[i][key];
           }
         }
@@ -6746,9 +6934,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           return;
         }
 
-        var classesArr = classes.split(" ");
+        let classesArr = classes.split(" ");
 
-        for (var i = 0; i < classesArr.length; i++) {
+        for (let i = 0; i < classesArr.length; i++) {
           if (KTUtil.hasClass(el, KTUtil.trim(classesArr[i])) == false) {
             return false;
           }
@@ -6772,16 +6960,16 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           return;
         }
 
-        var classNames = className.split(" ");
+        let classNames = className.split(" ");
 
         if (el.classList) {
-          for (var i = 0; i < classNames.length; i++) {
+          for (let i = 0; i < classNames.length; i++) {
             if (classNames[i] && classNames[i].length > 0) {
               el.classList.add(KTUtil.trim(classNames[i]));
             }
           }
         } else if (!KTUtil.hasClass(el, className)) {
-          for (var x = 0; x < classNames.length; x++) {
+          for (let x = 0; x < classNames.length; x++) {
             el.className += " " + KTUtil.trim(classNames[x]);
           }
         }
@@ -6792,14 +6980,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           return;
         }
 
-        var classNames = className.split(" ");
+        let classNames = className.split(" ");
 
         if (el.classList) {
-          for (var i = 0; i < classNames.length; i++) {
+          for (let i = 0; i < classNames.length; i++) {
             el.classList.remove(KTUtil.trim(classNames[i]));
           }
         } else if (KTUtil.hasClass(el, className)) {
-          for (var x = 0; x < classNames.length; x++) {
+          for (let x = 0; x < classNames.length; x++) {
             el.className = el.className.replace(
               new RegExp("\\b" + KTUtil.trim(classNames[x]) + "\\b", "g"),
               ""
@@ -6809,7 +6997,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       triggerCustomEvent: function(el, eventName, data) {
-        var event;
+        let event;
         if (window.CustomEvent) {
           event = new CustomEvent(eventName, {
             detail: data,
@@ -6824,7 +7012,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
       triggerEvent: function(node, eventName) {
         // Make sure we use the ownerDocument from the provided node to avoid cross-window problems
-        var doc;
+        let doc;
 
         if (node.ownerDocument) {
           doc = node.ownerDocument;
@@ -6837,7 +7025,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
         if (node.dispatchEvent) {
           // Gecko-style approach (now the standard) takes more work
-          var eventClass = "";
+          let eventClass = "";
 
           // Different events have different event classes.
           // If this switch statement can't map an eventName to an eventClass,
@@ -6864,9 +7052,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
                 "'.";
               break;
           }
-          var event = doc.createEvent(eventClass);
+          let event = doc.createEvent(eventClass);
 
-          var bubbles = eventName == "change" ? false : true;
+          let bubbles = eventName == "change" ? false : true;
           event.initEvent(eventName, bubbles, true); // All events created as bubbling and cancelable.
 
           event.synthetic = true; // allow detection of synthetic events
@@ -6874,14 +7062,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           node.dispatchEvent(event, true);
         } else if (node.fireEvent) {
           // IE-old school style
-          var event = doc.createEventObject();
+          let event = doc.createEventObject();
           event.synthetic = true; // allow detection of synthetic events
           node.fireEvent("on" + eventName, event);
         }
       },
 
       index: function(el) {
-        var c = el.parentNode.children,
+        let c = el.parentNode.children,
           i = 0;
         for (; i < c.length; i++) if (c[i] == el) return i;
       },
@@ -6931,7 +7119,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
       parents: function(elem, selector) {
         // Set up a parent array
-        var parents = [];
+        let parents = [];
 
         // Push each parent element to the array
         for (; elem && elem !== document; elem = elem.parentNode) {
@@ -6953,11 +7141,11 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           return null;
         }
 
-        var result = [],
+        let result = [],
           i = 0,
           l = el.childNodes.length;
 
-        for (var i; i < l; ++i) {
+        for (let i; i < l; ++i) {
           if (
             el.childNodes[i].nodeType == 1 &&
             KTUtil.matches(el.childNodes[i], selector, log)
@@ -6970,14 +7158,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       child: function(el, selector, log) {
-        var children = KTUtil.children(el, selector, log);
+        let children = KTUtil.children(el, selector, log);
 
         return children ? children[0] : null;
       },
 
       matches: function(el, selector, log) {
-        var p = Element.prototype;
-        var f =
+        let p = Element.prototype;
+        let f =
           p.matches ||
           p.webkitMatchesSelector ||
           p.mozMatchesSelector ||
@@ -7050,7 +7238,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       outerWidth: function(el, margin) {
-        var width;
+        let width;
 
         if (margin === true) {
           width = parseFloat(el.offsetWidth);
@@ -7067,7 +7255,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       offset: function(el) {
-        var rect, win;
+        let rect, win;
 
         if (!el) {
           return;
@@ -7098,8 +7286,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       outerHeight: function(el, withMargin) {
-        var height = el.offsetHeight;
-        var style;
+        let height = el.offsetHeight;
+        let style;
 
         if (typeof withMargin !== "undefined" && withMargin === true) {
           style = getComputedStyle(el);
@@ -7162,7 +7350,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
          * TinyAnimate.easings
          *  Adapted from jQuery Easing
          */
-        var easings = {};
+        let easings = {};
         var easing;
 
         easings.linear = function(t, b, c, d) {
@@ -7187,18 +7375,18 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         }
 
         // Pick implementation (requestAnimationFrame | setTimeout)
-        var rAF =
+        let rAF =
           window.requestAnimationFrame ||
           function(callback) {
             window.setTimeout(callback, 1000 / 50);
           };
 
         // Animation loop
-        var canceled = false;
-        var change = to - from;
+        let canceled = false;
+        let change = to - from;
 
         function loop(timestamp) {
-          var time = (timestamp || +new Date()) - start;
+          let time = (timestamp || +new Date()) - start;
 
           if (time >= 0) {
             update(easing(time, from, change, duration));
@@ -7214,7 +7402,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         update(from);
 
         // Start animation loop
-        var start =
+        let start =
           window.performance && window.performance.now
             ? window.performance.now()
             : +new Date();
@@ -7223,14 +7411,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       actualCss: function(el, prop, cache) {
-        var css = "";
+        let css = "";
 
         if (el instanceof HTMLElement === false) {
           return;
         }
 
         if (!el.getAttribute("kt-hidden-" + prop) || cache === false) {
-          var value;
+          let value;
 
           // the element is hidden so:
           // making the el block so we can meassure its height but still be hidden
@@ -7290,7 +7478,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
             el.style[styleProp] = value;
           }
         } else {
-          var defaultView = (el.ownerDocument || document).defaultView;
+          let defaultView = (el.ownerDocument || document).defaultView;
 
           // W3C standard way:
           if (defaultView && defaultView.getComputedStyle) {
@@ -7313,7 +7501,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
             // convert other units to pixels on IE
             if (/^\d+(em|pt|%|ex)?$/i.test(value)) {
               return (function(value) {
-                var oldLeft = el.style.left,
+                let oldLeft = el.style.left,
                   oldRsLeft = el.runtimeStyle.left;
 
                 el.runtimeStyle.left = el.currentStyle.left;
@@ -7341,9 +7529,9 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         }
 
         speed = speed ? speed : 600;
-        var calcHeight = KTUtil.actualHeight(el);
-        var calcPaddingTop = false;
-        var calcPaddingBottom = false;
+        let calcHeight = KTUtil.actualHeight(el);
+        let calcPaddingTop = false;
+        let calcPaddingBottom = false;
 
         if (
           KTUtil.css(el, "padding-top") &&
@@ -7513,14 +7701,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           return;
         }
 
-        var eventId = KTUtil.getUniqueId("event");
+        let eventId = KTUtil.getUniqueId("event");
 
         window.KTUtilDelegatedEventHandlers[eventId] = function(e) {
-          var targets = element.querySelectorAll(selector);
-          var target = e.target;
+          let targets = element.querySelectorAll(selector);
+          let target = e.target;
 
           while (target && target !== element) {
-            for (var i = 0, j = targets.length; i < j; i++) {
+            for (let i = 0, j = targets.length; i < j; i++) {
               if (target === targets[i]) {
                 handler.call(target, e);
               }
@@ -7571,7 +7759,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       hash: function(str) {
-        var hash = 0,
+        let hash = 0,
           i,
           chr;
 
@@ -7586,8 +7774,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       animateClass: function(el, animationName, callback) {
-        var animation;
-        var animations = {
+        let animation;
+        let animations = {
           animation: "animationend",
           OAnimation: "oAnimationEnd",
           MozAnimation: "mozAnimationEnd",
@@ -7595,7 +7783,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           msAnimation: "msAnimationEnd",
         };
 
-        for (var t in animations) {
+        for (let t in animations) {
           if (el.style[t] !== undefined) {
             animation = animations[t];
           }
@@ -7613,8 +7801,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       transitionEnd: function(el, callback) {
-        var transition;
-        var transitions = {
+        let transition;
+        let transitions = {
           transition: "transitionend",
           OTransition: "oTransitionEnd",
           MozTransition: "mozTransitionEnd",
@@ -7622,7 +7810,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           msTransition: "msTransitionEnd",
         };
 
-        for (var t in transitions) {
+        for (let t in transitions) {
           if (el.style[t] !== undefined) {
             transition = transitions[t];
           }
@@ -7632,8 +7820,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       animationEnd: function(el, callback) {
-        var animation;
-        var animations = {
+        let animation;
+        let animations = {
           animation: "animationend",
           OAnimation: "oAnimationEnd",
           MozAnimation: "mozAnimationEnd",
@@ -7641,7 +7829,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           msAnimation: "msAnimationEnd",
         };
 
-        for (var t in animations) {
+        for (let t in animations) {
           if (el.style[t] !== undefined) {
             animation = animations[t];
           }
@@ -7651,28 +7839,28 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       animateDelay: function(el, value) {
-        var vendors = ["webkit-", "moz-", "ms-", "o-", ""];
-        for (var i = 0; i < vendors.length; i++) {
+        let vendors = ["webkit-", "moz-", "ms-", "o-", ""];
+        for (let i = 0; i < vendors.length; i++) {
           KTUtil.css(el, vendors[i] + "animation-delay", value);
         }
       },
 
       animateDuration: function(el, value) {
-        var vendors = ["webkit-", "moz-", "ms-", "o-", ""];
-        for (var i = 0; i < vendors.length; i++) {
+        let vendors = ["webkit-", "moz-", "ms-", "o-", ""];
+        for (let i = 0; i < vendors.length; i++) {
           KTUtil.css(el, vendors[i] + "animation-duration", value);
         }
       },
 
       scrollTo: function(target, offset, duration) {
         var duration = duration ? duration : 500;
-        var targetPos = target ? KTUtil.offset(target).top : 0;
-        var scrollPos =
+        let targetPos = target ? KTUtil.offset(target).top : 0;
+        let scrollPos =
           window.pageYOffset ||
           document.documentElement.scrollTop ||
           document.body.scrollTop ||
           0;
-        var from, to;
+        let from, to;
 
         if (offset) {
           targetPos = targetPos - offset;
@@ -7697,7 +7885,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       isEmpty: function(obj) {
-        for (var prop in obj) {
+        for (let prop in obj) {
           if (obj.hasOwnProperty(prop)) {
             return false;
           }
@@ -7708,10 +7896,10 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
       numberString: function(nStr) {
         nStr += "";
-        var x = nStr.split(".");
-        var x1 = x[0];
-        var x2 = x.length > 1 ? "." + x[1] : "";
-        var rgx = /(\d+)(\d{3})/;
+        let x = nStr.split(".");
+        let x1 = x[0];
+        let x2 = x.length > 1 ? "." + x[1] : "";
+        let rgx = /(\d+)(\d{3})/;
         while (rgx.test(x1)) {
           x1 = x1.replace(rgx, "$1" + "," + "$2");
         }
@@ -7754,8 +7942,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       getDocumentHeight: function() {
-        var body = document.body;
-        var html = document.documentElement;
+        let body = document.body;
+        let html = document.documentElement;
 
         return Math.max(
           body.scrollHeight,
@@ -7841,7 +8029,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         if (typeof value === "string") {
           value = value.replace(/'/g, '"');
 
-          var jsonStr = value.replace(/(\w+:)|(\w+ :)/g, function(matched) {
+          let jsonStr = value.replace(/(\w+:)|(\w+ :)/g, function(matched) {
             return '"' + matched.substring(0, matched.length - 1) + '":';
           });
 
@@ -7854,17 +8042,17 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       getResponsiveValue: function(value, defaultValue) {
-        var width = this.getViewPort().width;
-        var result = null;
+        let width = this.getViewPort().width;
+        let result = null;
 
         value = KTUtil.parseJson(value);
 
         if (typeof value === "object") {
-          var resultKey;
-          var resultBreakpoint = -1;
-          var breakpoint;
+          let resultKey;
+          let resultBreakpoint = -1;
+          let breakpoint;
 
-          for (var key in value) {
+          for (let key in value) {
             if (key === "default") {
               breakpoint = 0;
             } else {
@@ -7896,13 +8084,13 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       getSelectorMatchValue: function(value) {
-        var result = null;
+        let result = null;
         value = KTUtil.parseJson(value);
 
         if (typeof value === "object") {
           // Match condition
           if (value["match"] !== undefined) {
-            var selector = Object.keys(value["match"])[0];
+            let selector = Object.keys(value["match"])[0];
             value = Object.values(value["match"])[0];
 
             if (document.querySelector(selector) !== null) {
@@ -7917,8 +8105,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       getConditionalValue: function(value) {
-        var value = KTUtil.parseJson(value);
-        var result = KTUtil.getResponsiveValue(value);
+       var value = KTUtil.parseJson(value);
+        let result = KTUtil.getResponsiveValue(value);
 
         if (result !== null && result["match"] !== undefined) {
           result = KTUtil.getSelectorMatchValue(result);
@@ -7936,7 +8124,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       getCssVariableValue: function(variableName) {
-        var hex = getComputedStyle(document.documentElement).getPropertyValue(
+        let hex = getComputedStyle(document.documentElement).getPropertyValue(
           variableName
         );
         if (hex && hex.length > 0) {
@@ -7947,7 +8135,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       },
 
       isInViewport: function(element) {
-        var rect = element.getBoundingClientRect();
+        let rect = element.getBoundingClientRect();
 
         return (
           rect.top >= 0 &&
@@ -8005,20 +8193,20 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-/*   var KTAppLayoutBuilder = (function() {
-    var form;
-    var actionInput;
-    var url;
-    var previewButton;
-    var exportButton;
-    var resetButton;
+/*   let KTAppLayoutBuilder = (function() {
+    let form;
+    let actionInput;
+    let url;
+    let previewButton;
+    let exportButton;
+    let resetButton;
 
-    var engage;
-    var engageToggleOff;
-    var engageToggleOn;
-    var engagePrebuiltsModal;
+    let engage;
+    let engageToggleOff;
+    let engageToggleOn;
+    let engagePrebuiltsModal;
 
-    var handleEngagePrebuilts = function() {
+    let handleEngagePrebuilts = function() {
       if (engagePrebuiltsModal === null) {
         return;
       }
@@ -8036,7 +8224,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }
     };
 
-    var handleEngagePrebuiltsViewMenu = function() {
+    let handleEngagePrebuiltsViewMenu = function() {
       const selected = engagePrebuiltsModal.querySelector(
         '[data-kt-element="selected"]'
       );
@@ -8078,7 +8266,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-/*     var handleEngageToggle = function() {
+/*     let handleEngageToggle = function() {
       engageToggleOff.addEventListener("click", function(e) {
         e.preventDefault();
 
@@ -8095,7 +8283,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
  */
-/*     var handlePreview = function() {
+/*     let handlePreview = function() {
       previewButton.addEventListener("click", function(e) {
         e.preventDefault();
 
@@ -8106,7 +8294,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         previewButton.setAttribute("data-kt-indicator", "on");
 
         // Prepare form data
-        var data = $(form).serialize();
+        let data = $(form).serialize();
 
         // Submit
         $.ajax({
@@ -8155,7 +8343,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
  */
-/*     var handleExport = function() {
+/*     let handleExport = function() {
       exportButton.addEventListener("click", function(e) {
         e.preventDefault();
 
@@ -8177,7 +8365,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         actionInput.value = "export";
 
         // Prepare form data
-        var data = $(form).serialize();
+        let data = $(form).serialize();
 
         $.ajax({
           type: "POST",
@@ -8185,7 +8373,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
           url: url,
           data: data,
           success: function(response, status, xhr) {
-            var timer = setInterval(function() {
+            let timer = setInterval(function() {
               $("<iframe/>")
                 .attr({
                   src:
@@ -8221,7 +8409,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var handleReset = function() {
+    let handleReset = function() {
       resetButton.addEventListener("click", function(e) {
         e.preventDefault();
 
@@ -8232,7 +8420,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         actionInput.value = "reset";
 
         // Prepare form data
-        var data = $(form).serialize();
+        let data = $(form).serialize();
 
         $.ajax({
           type: "POST",
@@ -8283,14 +8471,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 
     
 /*     
-    var handleThemeMode = function() {
-      var checkLight = document.querySelector(
+    let handleThemeMode = function() {
+      let checkLight = document.querySelector(
         "#kt_layout_builder_theme_mode_light"
       );
-      var checkDark = document.querySelector(
+      let checkDark = document.querySelector(
         "#kt_layout_builder_theme_mode_dark"
       );
-      var check = document.querySelector(
+      let check = document.querySelector(
         "#kt_layout_builder_theme_mode_" + KTThemeMode.getMode()
       );
 
@@ -8379,30 +8567,30 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-/*   var KTLayoutSearch = (function() {
+/*   let KTLayoutSearch = (function() {
     // Private variables
-    var element;
-    var formElement;
-    var mainElement;
-    var resultsElement;
-    var wrapperElement;
-    var emptyElement;
+    let element;
+    let formElement;
+    let mainElement;
+    let resultsElement;
+    let wrapperElement;
+    let emptyElement;
 
-    var preferencesElement;
-    var preferencesShowElement;
-    var preferencesDismissElement;
+    let preferencesElement;
+    let preferencesShowElement;
+    let preferencesDismissElement;
 
-    var advancedOptionsFormElement;
-    var advancedOptionsFormShowElement;
-    var advancedOptionsFormCancelElement;
-    var advancedOptionsFormSearchElement;
+    let advancedOptionsFormElement;
+    let advancedOptionsFormShowElement;
+    let advancedOptionsFormCancelElement;
+    let advancedOptionsFormSearchElement;
 
-    var searchObject;
+    let searchObject;
 
     // Private functions
-    var processs = function(search) {
-      var timeout = setTimeout(function() {
-        var number = KTUtil.getRandomInt(1, 3);
+    let processs = function(search) {
+      let timeout = setTimeout(function() {
+        let number = KTUtil.getRandomInt(1, 3);
 
         // Hide recently viewed
         mainElement.classList.add("d-none");
@@ -8424,7 +8612,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       }, 1500);
     };
 
-    var processsAjax = function(search) {
+    let processsAjax = function(search) {
       // Hide recently viewed
       mainElement.classList.add("d-none");
 
@@ -8455,7 +8643,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         });
     };
 
-    var clear = function(search) {
+    let clear = function(search) {
       // Show recently viewed
       mainElement.classList.remove("d-none");
       // Hide results
@@ -8464,7 +8652,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       emptyElement.classList.add("d-none");
     };
 
-    var handlePreferences = function() {
+    let handlePreferences = function() {
       // Preference show handler
       preferencesShowElement.addEventListener("click", function() {
         wrapperElement.classList.add("d-none");
@@ -8478,7 +8666,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var handleAdvancedOptionsForm = function() {
+    let handleAdvancedOptionsForm = function() {
       // Show
       advancedOptionsFormShowElement.addEventListener("click", function() {
         wrapperElement.classList.add("d-none");
@@ -8567,12 +8755,12 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  var KTThemeModeUser = (function() {
-    var handleSubmit = function() {
+  let KTThemeModeUser = (function() {
+    let handleSubmit = function() {
       // Update chart on theme mode change
       KTThemeMode.on("kt.thememode.change", function() {
-        var menuMode = KTThemeMode.getMenuMode();
-        var mode = KTThemeMode.getMode();
+        let menuMode = KTThemeMode.getMenuMode();
+        let mode = KTThemeMode.getMode();
         console.log("user selected theme mode:" + menuMode);
         console.log("theme mode:" + mode);
 
@@ -8592,6 +8780,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   // Initialize app on document ready
   KTUtil.onDOMContentLoaded(function() {
     KTThemeModeUser.init();
+    console.log('OKAY')
   });
 
   // Declare KTThemeModeUser for Webpack support
@@ -8600,192 +8789,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   }
 //("use strict");
 
-  // Class definition
-  var KTThemeMode = (function() {
-    var menu;
-    var callbacks = [];
-    var the = this;
 
-    var getMode = function() {
-      var mode;
-
-      if (document.documentElement.hasAttribute("data-bs-theme")) {
-        return document.documentElement.getAttribute("data-bs-theme");
-      } else if (localStorage.getItem("data-bs-theme") !== null) {
-        return localStorage.getItem("data-bs-theme");
-      } else if (getMenuMode() === "system") {
-        return getSystemMode();
-      }
-
-      return "light";
-    };
-
-    var setMode = function(mode, menuMode) {
-      var currentMode = getMode();
-
-      // Reset mode if system mode was changed
-      if (menuMode === "system") {
-        if (getSystemMode() !== mode) {
-          mode = getSystemMode();
-        }
-      } else if (mode !== menuMode) {
-        menuMode = mode;
-      }
-
-      // Read active menu mode value
-      var activeMenuItem = menu
-        ? menu.querySelector(
-            '[data-kt-element="mode"][data-kt-value="' + menuMode + '"]'
-          )
-        : null;
-
-      // Enable switching state
-      document.documentElement.setAttribute(
-        "data-kt-theme-mode-switching",
-        "true"
-      );
-
-      // Set mode to the target document.documentElement
-      document.documentElement.setAttribute("data-bs-theme", mode);
-
-      // Disable switching state
-      setTimeout(function() {
-        document.documentElement.removeAttribute(
-          "data-kt-theme-mode-switching"
-        );
-      }, 300);
-
-      // Store mode value in storage
-      localStorage.setItem("data-bs-theme", mode);
-
-      // Set active menu item
-      if (activeMenuItem) {
-        localStorage.setItem("data-bs-theme-mode", menuMode);
-        setActiveMenuItem(activeMenuItem);
-      }
-
-      if (mode !== currentMode) {
-        KTEventHandler.trigger(
-          document.documentElement,
-          "kt.thememode.change",
-          the
-        );
-      }
-    };
-
-    var getMenuMode = function() {
-      if (!menu) {
-        return null;
-      }
-
-      var menuItem = menu
-        ? menu.querySelector('.active[data-kt-element="mode"]')
-        : null;
-      var defaultThemeMode = "light";
-      if (menuItem && menuItem.getAttribute("data-kt-value")) {
-        return menuItem.getAttribute("data-kt-value");
-      } else if (document.documentElement.hasAttribute("data-bs-theme-mode")) {
-        return document.documentElement.getAttribute("data-bs-theme-mode");
-      } else if (localStorage.getItem("data-bs-theme-mode") !== null) {
-        return localStorage.getItem("data-bs-theme-mode");
-      } else {
-        return typeof defaultThemeMode !== "undefined"
-          ? defaultThemeMode
-          : "light";
-      }
-    };
-
-    var getSystemMode = function() {
-      return window.matchMedia("(prefers-color-scheme: dark)").matches
-        ? "dark"
-        : "light";
-    };
-
-    var initMode = function() {
-      setMode(getMode(), getMenuMode());
-      KTEventHandler.trigger(
-        document.documentElement,
-        "kt.thememode.init",
-        the
-      );
-    };
-
-    var getActiveMenuItem = function() {
-      return menu.querySelector(
-        '[data-kt-element="mode"][data-kt-value="' + getMenuMode() + '"]'
-      );
-    };
-
-    var setActiveMenuItem = function(item) {
-      var menuMode = item.getAttribute("data-kt-value");
-
-      var activeItem = menu.querySelector('.active[data-kt-element="mode"]');
-
-      if (activeItem) {
-        activeItem.classList.remove("active");
-      }
-
-      item.classList.add("active");
-      localStorage.setItem("data-bs-theme-mode", menuMode);
-    };
-
-    var handleMenu = function() {
-      var items = [].slice.call(
-        menu.querySelectorAll('[data-kt-element="mode"]')
-      );
-
-      items.map(function(item) {
-        item.addEventListener("click", function(e) {
-          e.preventDefault();
-
-          var menuMode = item.getAttribute("data-kt-value");
-          var mode = menuMode;
-
-          if (menuMode === "system") {
-            mode = getSystemMode();
-          }
-
-          setMode(mode, menuMode);
-        });
-      });
-    };
-
-    return {
-      init: function() {
-        menu = document.querySelector('[data-kt-element="theme-mode-menu"]');
-
-        initMode();
-
-        if (menu) {
-          handleMenu();
-        }
-      },
-
-      getMode: function() {
-        return getMode();
-      },
-
-      getMenuMode: function() {
-        return getMenuMode();
-      },
-
-      getSystemMode: function() {
-        return getSystemMode();
-      },
-
-      setMode: function(mode) {
-        return setMode(mode);
-      },
-
-      on: function(name, handler) {
-        return KTEventHandler.on(document.documentElement, name, handler);
-      },
-
-      off: function(name, handlerId) {
-        return KTEventHandler.off(document.documentElement, name, handlerId);
-      },
-    };
-  })();
 
   // Initialize app on document ready
   KTUtil.onDOMContentLoaded(function() {
@@ -8799,20 +8803,19 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  export var KTAppSidebar = (function() {
+  export let KTAppSidebar = (function() {
     // Private variables
-    var toggle;
-    var sidebar;
-    var headerMenu;
-    var menuDashboardsCollapse;
-    var menuWrapper;
-    var toggle;
+    let sidebar;
+    let headerMenu;
+    let menuDashboardsCollapse;
+    let menuWrapper;
+    let toggle;
 
     // Private functions
     // Handle sidebar minimize mode toggle
-    var handleToggle = function() {
-      var toggleObj = KTToggle.getInstance(toggle);
-      var headerMenuObj = KTMenu.getInstance(headerMenu);
+    let handleToggle = function() {
+      let toggleObj = KTToggle.getInstance(toggle);
+      let headerMenuObj = KTMenu.getInstance(headerMenu);
 
       if (toggleObj === null) {
         return;
@@ -8845,7 +8848,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         // In server side check sidebar_minimize_state cookie
         // value and add data-kt-app-sidebar-minimize="on"
         // attribute to Body tag and "active" class to the toggle button
-        var date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+        let date = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
 
         KTCookie.set(
           "sidebar_minimize_state",
@@ -8856,7 +8859,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
     };
 
     // Handle dashboards menu items collapse mode
-    var handleShowMore = function() {
+    let handleShowMore = function() {
       menuDashboardsCollapse.addEventListener("hide.bs.collapse", (event) => {
         menuWrapper.scrollTo({
           top: 0,
@@ -8865,8 +8868,8 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
     };
 
-    var handleMenuScroll = function() {
-      var menuActiveItem = menuWrapper.querySelector(".menu-link.active");
+    let handleMenuScroll = function() {
+      let menuActiveItem = menuWrapper.querySelector(".menu-link.active");
 
       if (!menuActiveItem) {
         return;
@@ -8920,14 +8923,14 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
 //("use strict");
 
   // Class definition
-  export var KTLayoutToolbar = (function() {
+  export let KTLayoutToolbar = (function() {
     // Private variables
-    var toolbar;
+    let toolbar;
 
     // Private functions
-    var initForm = function() {
-      var rangeSlider = document.querySelector("#kt_app_toolbar_slider");
-      var rangeSliderValueElement = document.querySelector(
+    let initForm = function() {
+      let rangeSlider = document.querySelector("#kt_app_toolbar_slider");
+      let rangeSliderValueElement = document.querySelector(
         "#kt_app_toolbar_slider_value"
       );
 
@@ -8952,7 +8955,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
         rangeSliderValueElement.innerHTML = values[handle];
       });
 
-      var handle = rangeSlider.querySelector(".noUi-handle");
+      let handle = rangeSlider.querySelector(".noUi-handle");
 
       handle.setAttribute("tabindex", 0);
 
@@ -8961,7 +8964,7 @@ if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
       });
 
       handle.addEventListener("keydown", function(event) {
-        var value = Number(rangeSlider.noUiSlider.get());
+        let value = Number(rangeSlider.noUiSlider.get());
 
         switch (event.which) {
           case 37:
