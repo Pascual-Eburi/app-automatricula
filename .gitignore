@@ -10,6 +10,7 @@ automatricula.code-workspace
 
 # dependencies
 /node_modules
+/venv
 .pnp
 .pnp.js
 
