@@ -22,11 +22,11 @@ This is the backend of the app developed using Python, Django, Django Rest Frame
     your_virtual_env_name/Scripts/activate.bat
 
     - On Mac/Linux:
-        ```sh
+    ```sh
     source/bin/activate
 
-5. **Install dependencies**
-        ```sh
+5. **Install dependencies**:
+    ```sh
     pip install -r requirements.txt
 
 
